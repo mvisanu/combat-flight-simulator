@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a56cf5cc06392a647b91a1576ebbcdce, type: 3}
+  m_Name: PacificFighterSweep
+  m_EditorClassIdentifier: 
+  MissionName: Pacific Fighter Sweep
+  Description: Intercept four Zero fighters. Keep your speed; avoid a prolonged turning
+    fight.
+  PlayerAircraft: {fileID: 11400000, guid: a2c9b7505f131b54d8187b374f9f189c, type: 2}
+  EnemyAircraft: {fileID: 11400000, guid: b3ab56bf2a76fe1458cc30eaa8c26171, type: 2}
+  PlayerWeapons: {fileID: 11400000, guid: 7c03c602e0aeb024eb0287e9b5285ff1, type: 2}
+  EnemyWeapons: {fileID: 11400000, guid: dd5afad7101239d4097892985ece630c, type: 2}
+  StartingAltitude: 3048
+  StartingSpeed: 111.76
+  EnemyRange: 4000
+  EnemyCount: 4

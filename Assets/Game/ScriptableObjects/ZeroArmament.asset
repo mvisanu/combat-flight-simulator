@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b2e45ce0626b72449677f889e2ecf3f, type: 3}
+  m_Name: ZeroArmament
+  m_EditorClassIdentifier: 
+  WeaponName: Two 20 mm cannon and two 7.7 mm machine guns
+  GunCount: 4
+  Ammunition: 1320
+  RoundsPerMinutePerGun: 700
+  MuzzleVelocity: 740
+  Range: 1800
+  Damage: 7
+  SpreadDegrees: 0.2
+  Convergence: 300
+  TracerEvery: 4
+  MixedCannon: 1

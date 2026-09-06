@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: beb68a94129097846ab8d98fa65245b1, type: 3}
+  m_Name: A6MZero_Data
+  m_EditorClassIdentifier: 
+  AircraftName: A6M2 Zero
+  Mass: 2700
+  WingArea: 22.44
+  WingSpan: 12
+  EnginePower: 708000
+  MaximumThrust: 9000
+  MaxRPM: 2550
+  SuperchargerAltitude: 3800
+  MaximumRecommendedSpeed: 150
+  StallReferenceSpeed: 39
+  MaximumLiftCoefficient: 1.7
+  LiftSlope: 5.2
+  TrimLiftCoefficient: 0.205
+  StallAngle: 19
+  BaseDragCoefficient: 0.031
+  InducedDragCoefficient: 0.047
+  PitchAuthority: 2.15
+  RollAuthority: 3.6
+  YawAuthority: 1.1
+  MaximumStructuralG: 7
+  MaximumSafeDiveSpeed: 185
+  HighSpeedControlLoss: 0.75
+  Durability: 0.63
+  FuelCapacity: 520
+  IdleFuelConsumption: 25
+  FullPowerFuelConsumption: 260
+  MaximumFuelLeakRate: 4
+  FireFuelConsumption: 2
