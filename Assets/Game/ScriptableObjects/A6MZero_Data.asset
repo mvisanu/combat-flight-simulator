@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: A6MZero_Data
   m_EditorClassIdentifier: 
   AircraftName: A6M2 Zero
+  Type: 1
   Mass: 2700
   WingArea: 22.44
   WingSpan: 12
@@ -40,3 +41,7 @@ MonoBehaviour:
   FullPowerFuelConsumption: 260
   MaximumFuelLeakRate: 4
   FireFuelConsumption: 2
+  MaximumLandingSinkSpeed: 3.5
+  CoolantLimitC: 125
+  CriticalEngineTemperatureC: 150
+  CoolingTimeSeconds: 70

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: BrowningM2
   m_EditorClassIdentifier: 
   WeaponName: Six Browning .50 caliber guns
+  DisplayLabel: .50 CAL
   GunCount: 6
   Ammunition: 1880
   RoundsPerMinutePerGun: 750
@@ -23,3 +24,9 @@ MonoBehaviour:
   Convergence: 300
   TracerEvery: 4
   MixedCannon: 0
+  CannonCount: 2
+  CannonAmmunition: 120
+  CannonMuzzleVelocity: 600
+  CannonRoundsPerMinute: 520
+  CannonDamage: 30
+  MuzzlePositions: []

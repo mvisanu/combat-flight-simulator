@@ -36,9 +36,9 @@ namespace PacificCombat
         {
             aircraft = owner;
             Configuration = data ? data : Configuration;
-            if (!Configuration) { Configuration = owner.Team == 0 ? WeaponData.CreateMustang() : WeaponData.CreateZero(); ownsConfiguration = true; }
+            if (!Configuration) { Configuration = WeaponData.ForAircraft(owner.Data.Type); ownsConfiguration = true; }
             Ammo = Configuration.Ammunition;
-            CannonAmmo = Configuration.MixedCannon ? 120 : 0;
+            CannonAmmo = Configuration.MixedCannon ? Mathf.Min(Configuration.CannonAmmunition, Ammo) : 0;
             ShotsFired = Hits = 0;
             tracers = gameObject.AddComponent<TracerPool>();
             tracers.Initialize(64, Configuration.MixedCannon ? new Color(1, .35f, .08f) : new Color(1, .8f, .28f));
@@ -57,15 +57,18 @@ namespace PacificCombat
                 timers[gun] -= deltaTime;
                 if (!Firing) { timers[gun] = Mathf.Max(0, timers[gun]); continue; }
                 if (timers[gun] > .00001f || (!UnlimitedAmmo && Ammo <= 0)) continue;
-                bool cannon = Configuration.MixedCannon && gun < 2;
+                bool cannon = Configuration.MixedCannon && gun < Configuration.CannonCount;
                 if (cannon && CannonAmmo <= 0 && !UnlimitedAmmo) continue;
-                timers[gun] = Mathf.Max(-deltaTime, timers[gun]) + 60 / (cannon ? 520 : Configuration.RoundsPerMinutePerGun);
+                if (!cannon && Ammo - CannonAmmo <= 0 && !UnlimitedAmmo) continue;
+                timers[gun] = Mathf.Max(-deltaTime, timers[gun]) + 60 / (cannon ? Configuration.CannonRoundsPerMinute : Configuration.RoundsPerMinutePerGun);
                 FireGun(gun, cannon);
             }
         }
 
         public Vector3 GunPosition(int gun)
         {
+            if (Configuration && Configuration.MuzzlePositions != null && gun >= 0 && gun < Configuration.MuzzlePositions.Length)
+                return transform.TransformPoint(Configuration.MuzzlePositions[gun]);
             bool mixed = Configuration && Configuration.MixedCannon;
             float x = mixed ? (gun < 2 ? 2.5f : .36f) : 2.35f + (gun / 2) * .35f;
             if ((gun & 1) == 0) x = -x;
@@ -90,8 +93,8 @@ namespace PacificCombat
             bullets[slot] = new Bullet
             {
                 Active = true, Position = muzzle,
-                Velocity = direction * (cannon ? 600 : Configuration.MuzzleVelocity) + aircraft.Body.linearVelocity,
-                Damage = cannon ? 30 : Configuration.Damage,
+                Velocity = direction * (cannon ? Configuration.CannonMuzzleVelocity : Configuration.MuzzleVelocity) + aircraft.Body.linearVelocity,
+                Damage = cannon ? Configuration.CannonDamage : Configuration.Damage,
                 Tracer = ShotsFired % Configuration.TracerEvery == 0 ? tracers.Acquire(muzzle) : -1
             };
             Fired?.Invoke();
@@ -149,6 +152,10 @@ namespace PacificCombat
             for (int i = 0; i < bullets.Length; i++) if (bullets[i].Active) bullets[i].Position -= offset;
             if (tracers) tracers.Shift(offset);
         }
-        void OnDestroy() { if (ownsConfiguration && Configuration) Destroy(Configuration); }
+        void OnDestroy()
+        {
+            if (!ownsConfiguration || !Configuration) return;
+            if (Application.isPlaying) Destroy(Configuration); else DestroyImmediate(Configuration);
+        }
     }
 }

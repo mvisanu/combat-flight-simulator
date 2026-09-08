@@ -1,0 +1,42 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3a8b083a2844449418a2d1eda6c35caf, type: 3}
+  m_Name: AircraftCatalog
+  m_EditorClassIdentifier: 
+  Entries:
+  - Type: 0
+    ShortName: P-51D
+    ModelResourcePath: Art/P51D
+    FlyingAdvice: Keep your speed. Strike, extend, then climb for another pass.
+    Aircraft: {fileID: 11400000, guid: a2c9b7505f131b54d8187b374f9f189c, type: 2}
+    Weapons: {fileID: 11400000, guid: 7c03c602e0aeb024eb0287e9b5285ff1, type: 2}
+  - Type: 1
+    ShortName: A6M Zero
+    ModelResourcePath: Art/A6MZero
+    FlyingAdvice: Use low-speed agility. Turn inside faster opponents and watch your
+      dive speed.
+    Aircraft: {fileID: 11400000, guid: b3ab56bf2a76fe1458cc30eaa8c26171, type: 2}
+    Weapons: {fileID: 11400000, guid: dd5afad7101239d4097892985ece630c, type: 2}
+  - Type: 2
+    ShortName: Bf 109
+    ModelResourcePath: Art/Bf109
+    FlyingAdvice: Climb for an advantage. Make short cannon bursts and keep enough
+      speed to escape.
+    Aircraft: {fileID: 11400000, guid: b054cb59f055dae499c31e56da53a55c, type: 2}
+    Weapons: {fileID: 11400000, guid: 8076b638e8a481746ae0c160391613a3, type: 2}
+  - Type: 3
+    ShortName: P-38
+    ModelResourcePath: Art/P38Lightning
+    FlyingAdvice: Concentrated nose guns reward accurate aim. Use speed and altitude
+      to set up each pass.
+    Aircraft: {fileID: 11400000, guid: e97b7924dd4d6c9408a079642d87f9ea, type: 2}
+    Weapons: {fileID: 11400000, guid: 789a22f0163d5db44ba64cfe00afad47, type: 2}

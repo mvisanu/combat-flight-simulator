@@ -19,6 +19,9 @@ MonoBehaviour:
   EnemyAircraft: {fileID: 11400000, guid: b3ab56bf2a76fe1458cc30eaa8c26171, type: 2}
   PlayerWeapons: {fileID: 11400000, guid: 7c03c602e0aeb024eb0287e9b5285ff1, type: 2}
   EnemyWeapons: {fileID: 11400000, guid: dd5afad7101239d4097892985ece630c, type: 2}
+  Catalog: {fileID: 11400000, guid: f33f3cb76957db04aa6f73909d906a3d, type: 2}
+  Scenario: 0
+  Weather: 1
   StartingAltitude: 3048
   StartingSpeed: 111.76
   EnemyRange: 4000

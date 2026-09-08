@@ -4,7 +4,8 @@ namespace PacificCombat
     public enum FighterAIState { Patrol, Search, Intercept, Attack, Pursuit, DefensiveTurn,
         OvershootRecovery, RegainEnergy, Reposition, Damaged, Disengage, Dead }
     public enum FighterAIManeuver { LeadPursuit, LagPursuit, BreakTurn, Scissors, HighYoYo,
-        LowYoYo, EnergyExtension, ClimbingReposition, TerrainRecovery, LevelFlight }
+        LowYoYo, EnergyExtension, ClimbingReposition, TerrainRecovery, LevelFlight,
+        Immelmann, SplitS, RollingScissors, BarrelRollDefense }
 
     public sealed class FighterAIStateMachine
     {

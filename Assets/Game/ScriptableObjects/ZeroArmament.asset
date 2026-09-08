@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: ZeroArmament
   m_EditorClassIdentifier: 
   WeaponName: Two 20 mm cannon and two 7.7 mm machine guns
+  DisplayLabel: 20 MM + 7.7 MM
   GunCount: 4
   Ammunition: 1320
   RoundsPerMinutePerGun: 700
@@ -23,3 +24,13 @@ MonoBehaviour:
   Convergence: 300
   TracerEvery: 4
   MixedCannon: 1
+  CannonCount: 2
+  CannonAmmunition: 120
+  CannonMuzzleVelocity: 600
+  CannonRoundsPerMinute: 520
+  CannonDamage: 30
+  MuzzlePositions:
+  - {x: -2.5, y: -0.05, z: 0.8}
+  - {x: 2.5, y: -0.05, z: 0.8}
+  - {x: -0.36, y: 0.3, z: 2.8}
+  - {x: 0.36, y: 0.3, z: 2.8}

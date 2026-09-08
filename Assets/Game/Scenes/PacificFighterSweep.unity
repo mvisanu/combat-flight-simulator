@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &909504307
+--- !u!1 &1831815250
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,8 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 909504309}
-  - component: {fileID: 909504308}
+  - component: {fileID: 1831815252}
+  - component: {fileID: 1831815251}
   m_Layer: 0
   m_Name: Pacific Fighter Sweep
   m_TagString: Untagged
@@ -136,13 +136,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &909504308
+--- !u!114 &1831815251
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 909504307}
+  m_GameObject: {fileID: 1831815250}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c861a905e8d1c0a439315d783d2a3a55, type: 3}
@@ -154,17 +154,22 @@ MonoBehaviour:
   - {fileID: 2100000, guid: 284d3be518ca6e64592f1aea26f38d61, type: 2}
   - {fileID: 2100000, guid: 01fd84a53c1467a4d951566ff430adf0, type: 2}
   - {fileID: 2100000, guid: b78876d31f25a3e479387eb5d72417fc, type: 2}
+  - {fileID: 2100000, guid: 8fd2ad88074b11b499aa9bcdf03545ca, type: 2}
+  - {fileID: 2100000, guid: 6d7302fd99bf6894a9237c6f084e17ad, type: 2}
+  - {fileID: 2100000, guid: 1d0909cda0ebb904cba98a4e82ddc751, type: 2}
+  - {fileID: 2100000, guid: c48e63fb82880e948890b4f95c36a04b, type: 2}
+  - {fileID: 2100000, guid: 05457c24c15af5a4cbad763a158eaabe, type: 2}
   LeadIndicator: 0
   ShowDebug: 0
   ShowHUD: 1
   Difficulty: 1
---- !u!4 &909504309
+--- !u!4 &1831815252
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 909504307}
+  m_GameObject: {fileID: 1831815250}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -177,4 +182,4 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 909504309}
+  - {fileID: 1831815252}

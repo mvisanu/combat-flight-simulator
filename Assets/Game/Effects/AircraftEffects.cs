@@ -5,6 +5,7 @@ namespace PacificCombat
     [DisallowMultipleComponent]
     public sealed class AircraftEffects : MonoBehaviour
     {
+        public static int Quality = 2;
         AircraftController aircraft;
         AircraftDamage damage;
         ParticleSystem smoke, fire, impacts, muzzle;
@@ -102,8 +103,9 @@ namespace PacificCombat
         {
             if (!aircraft || !damage) return;
             var emission = smoke.emission;
-            emission.rateOverTime = aircraft.IsDestroyed ? 25 : (1 - aircraft.EngineHealth) * 16 + (damage.FuelLeaking ? 5 : 0);
-            emission = fire.emission; emission.rateOverTime = damage.Burning ? 30 : 0;
+            float scale = Quality == 0 ? .2f : Quality == 1 ? .5f : Quality == 2 ? 1 : 1.5f;
+            emission.rateOverTime = (aircraft.IsDestroyed ? 25 : (1 - aircraft.EngineHealth) * 16 + (damage.FuelLeaking ? 5 : 0)) * scale;
+            emission = fire.emission; emission.rateOverTime = damage.Burning ? 30 * scale : 0;
         }
         void OnHit(Vector3 point, float amount)
         {
@@ -129,9 +131,8 @@ namespace PacificCombat
         {
             if (damage) { damage.Hit -= OnHit; damage.Destroyed -= OnDestroyed; }
             if (weapons) weapons.Fired -= OnFired;
-            if (smokeMaterial) Destroy(smokeMaterial);
-            if (fireMaterial) Destroy(fireMaterial);
-            if (particleTexture) Destroy(particleTexture);
+            Release(smokeMaterial); Release(fireMaterial); Release(particleTexture);
         }
+        static void Release(Object asset) { if (asset) { if (Application.isPlaying) Destroy(asset); else DestroyImmediate(asset); } }
     }
 }

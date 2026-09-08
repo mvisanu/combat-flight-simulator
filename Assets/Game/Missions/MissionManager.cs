@@ -24,29 +24,52 @@ namespace PacificCombat
         public bool ShowDebug;
         public bool ShowHUD = true;
         public FighterDifficulty Difficulty = FighterDifficulty.Regular;
+        public AircraftCatalog Catalog => Definition ? Definition.Catalog : null;
+        public AircraftType PlayerAircraftType => Definition.PlayerAircraft.Type;
+        public AircraftType EnemyAircraftType => Definition.EnemyAircraft.Type;
         int targetIndex = -1;
         Transform world;
         bool ownsDefinition;
         static bool restartIntoFlight;
+        static bool launchSelectionApplied;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetMissionSession() { restartIntoFlight = false; launchSelectionApplied = false; }
 
         void Start()
         {
             Time.fixedDeltaTime = .02f;
             Application.targetFrameRate = 120;
             QualitySettings.vSyncCount = 0;
-            bool automatedSettings = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--smoke-test") >= 0;
+            bool selectionSmoke = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--selection-smoke") >= 0;
+            bool worldSmoke = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--world-smoke") >= 0;
+            bool automatedSettings = worldSmoke || selectionSmoke || System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--smoke-test") >= 0;
             GameSettings.BeginSession(automatedSettings);
+            if (worldSmoke) WorldRuntimeSmoke.ConfigureSettings();
             GameSettings.ApplyToMission(this);
-            if (!Definition)
+            if (!launchSelectionApplied)
             {
-                ownsDefinition = true;
-                Definition = ScriptableObject.CreateInstance<MissionDefinition>();
-                Definition.PlayerAircraft = AircraftData.CreateMustang();
-                Definition.EnemyAircraft = AircraftData.CreateZero();
+                if (selectionSmoke)
+                {
+                    // Dedicated UI-path regression starts from a known matchup;
+                    // other aircraft CLI options belong to the ordinary smoke harness.
+                    GameSettings.Current.PlayerAircraft = AircraftType.P51D;
+                    GameSettings.Current.EnemyAircraft = AircraftType.A6MZero;
+                }
+                else AircraftCatalog.ApplyCommandLine(GameSettings.Current, System.Environment.GetCommandLineArgs());
+                launchSelectionApplied = true;
             }
+            // Aircraft choices belong to this mission instance, not the authored asset.
+            Definition = Definition ? Instantiate(Definition) : ScriptableObject.CreateInstance<MissionDefinition>();
+            ownsDefinition = true;
+            var catalog = Definition.Catalog ? Definition.Catalog : Resources.Load<AircraftCatalog>(AircraftCatalog.ResourcePath);
+            Definition.ConfigureAircraft(catalog, GameSettings.Current.PlayerAircraft, GameSettings.Current.EnemyAircraft);
+            ScenarioCatalog.Apply(Definition, GameSettings.Current.Mission);
+            Definition.Weather = GameSettings.Current.Weather;
             world = new GameObject("Pacific world").transform;
-            world.gameObject.AddComponent<PacificEnvironment>().Build();
-            Player = AircraftFactory.Create(Definition.PlayerAircraft, true, 0, new Vector3(0, Definition.StartingAltitude, 0), Quaternion.identity, Definition.StartingSpeed, Definition.PlayerWeapons);
+            world.gameObject.AddComponent<PacificEnvironment>().Build(Definition.Weather);
+            Vector3 playerStart = new Vector3(0, Definition.StartingAltitude, Definition.Scenario == MissionPreset.LandingPractice ? -6500 : 0);
+            Player = AircraftFactory.Create(Definition.PlayerAircraft, true, 0, playerStart, Quaternion.identity, Definition.StartingSpeed, Definition.PlayerWeapons);
             Weapons = Player.GetComponent<AircraftWeaponSystem>();
             Damage = Player.GetComponent<AircraftDamage>();
             Input = Player.GetComponent<AircraftInput>();
@@ -59,7 +82,13 @@ namespace PacificCombat
             for (int i = 0; i < Enemies.Length; i++)
             {
                 Enemies[i] = AircraftFactory.Create(Definition.EnemyAircraft, false, 1, new Vector3((i % 4 - 1.5f) * 180, Definition.StartingAltitude + 100 + i * 35, Definition.EnemyRange + (i / 4) * 250 + Mathf.Abs(i % 4 - 1.5f) * 80), Quaternion.Euler(0, 180, 0), 105, Definition.EnemyWeapons);
-                Enemies[i].name = "Zero " + (i + 1);
+                Enemies[i].name = Catalog.Get(EnemyAircraftType).ShortName + " " + (i + 1);
+                if (Definition.Scenario == MissionPreset.Intercept)
+                {
+                    Enemies[i].Body.position = new Vector3(Definition.EnemyRange + i * 160, Definition.StartingAltitude + 700, 600 + i * 180);
+                    Enemies[i].Body.rotation = Quaternion.Euler(0, -90, 0);
+                    Enemies[i].Body.linearVelocity = Vector3.left * 110;
+                }
                 Enemies[i].GetComponent<AircraftDamage>().Destroyed += OnEnemyDestroyed;
                 var ai = Enemies[i].gameObject.AddComponent<FighterAIController>();
                 ai.Difficulty = Difficulty;
@@ -72,7 +101,7 @@ namespace PacificCombat
             camera.nearClipPlane = .08f;
             camera.farClipPlane = 65000;
             camera.backgroundColor = new Color(.43f, .65f, .79f);
-            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.clearFlags = CameraClearFlags.Skybox;
             FlightCamera = cameraObject.AddComponent<CameraController>();
             FlightCamera.Initialize(this);
             gameObject.AddComponent<FlightHUD>().Initialize(this);
@@ -83,8 +112,10 @@ namespace PacificCombat
             if (restartIntoFlight) { restartIntoFlight = false; BeginMission(); }
             // Automation runs the same scene and components as the player build.
             string[] arguments = System.Environment.GetCommandLineArgs();
-            for (int i = 0; i < arguments.Length; i++)
-                if (arguments[i] == "--smoke-test") { BeginMission(); gameObject.AddComponent<RuntimeSmokeTest>().Initialize(this); }
+            if (worldSmoke) gameObject.AddComponent<WorldRuntimeSmoke>().Initialize(this);
+            else if (selectionSmoke) SelectionRuntimeSmokeTest.InitializeMission(this);
+            else for (int i = 0; i < arguments.Length; i++)
+                if (arguments[i] == "--smoke-test") gameObject.AddComponent<RuntimeSmokeTest>().Initialize(this);
         }
 
         void Update()
@@ -99,6 +130,13 @@ namespace PacificCombat
                 else if (State == MissionState.Briefing) BeginMission();
             }
             if (State == MissionState.Flying) MissionTime += Time.deltaTime;
+            if (State == MissionState.Flying && Definition.Scenario == MissionPreset.LandingPractice && MissionTime > 3
+                && Player.Controls.Gear && Player.Body.linearVelocity.magnitude < 2 && !Player.IsDestroyed)
+            {
+                Vector3 relative = world.InverseTransformPoint(Player.Body.position);
+                if (Mathf.Abs(relative.x) < 32 && Mathf.Abs(relative.z + 3500) < 1200 && relative.y > 8 && relative.y < 13)
+                { State = MissionState.Victory; Time.timeScale = .15f; }
+            }
             if (SelectedTarget && SelectedTarget.IsDestroyed) CycleTarget();
             if (UnityEngine.InputSystem.Keyboard.current?.f3Key.wasPressedThisFrame == true) ShowDebug = !ShowDebug;
         }
@@ -108,6 +146,26 @@ namespace PacificCombat
         public void Resume() { Input.ShowBindings = false; State = MissionState.Flying; Time.timeScale = 1; }
         public void Restart() { restartIntoFlight = true; ReloadScene(); }
         public void MainMenu() { restartIntoFlight = false; ReloadScene(); }
+        public void SelectScenario(MissionPreset preset)
+        {
+            if (State != MissionState.Briefing || !System.Enum.IsDefined(typeof(MissionPreset), preset)) return;
+            GameSettings.Current.Mission = preset; GameSettings.SaveCurrent(); MainMenu();
+        }
+        public void SelectWeather(WeatherPreset preset)
+        {
+            if (State != MissionState.Briefing || !System.Enum.IsDefined(typeof(WeatherPreset), preset)) return;
+            GameSettings.Current.Weather = preset; GameSettings.SaveCurrent(); MainMenu();
+        }
+        public void SelectAircraft(AircraftType type, bool enemy)
+        {
+            if (State != MissionState.Briefing || !AircraftCatalog.IsValidType(type)) return;
+            Catalog.Get(type); // Reject an incomplete roster before changing saved preferences.
+            if (enemy ? type == EnemyAircraftType : type == PlayerAircraftType) return;
+            if (enemy) GameSettings.Current.EnemyAircraft = type; else GameSettings.Current.PlayerAircraft = type;
+            GameSettings.SaveCurrent();
+            restartIntoFlight = false;
+            ReloadScene();
+        }
         void ReloadScene() { Time.timeScale = 1; SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex); }
         public void Quit()
         {
@@ -145,7 +203,7 @@ namespace PacificCombat
         void OnDestroy()
         {
             Time.timeScale = 1;
-            if (ownsDefinition && Definition) { Destroy(Definition.PlayerAircraft); Destroy(Definition.EnemyAircraft); Destroy(Definition); }
+            if (ownsDefinition && Definition) Destroy(Definition);
         }
     }
 }

@@ -16,6 +16,8 @@ namespace PacificCombat
         [SerializeField] bool drawDebug;
         readonly FighterAIPerception perception = new FighterAIPerception();
         readonly FighterAIStateMachine machine = new FighterAIStateMachine();
+        readonly FighterAIManeuverExecutor maneuverExecutor = new FighterAIManeuverExecutor();
+        float nextAdvancedManeuver;
         AircraftController target;
         int squadIndex;
         float nextDecision;
@@ -40,7 +42,17 @@ namespace PacificCombat
         public float MuzzleVelocity { get => muzzleVelocity; set => muzzleVelocity = Mathf.Max(100f, value); }
         public Vector3 AimPoint => aimPoint;
         public bool TargetVisible => perception.Visible;
+        public ManeuverPhase ManeuverPhase => maneuverExecutor.Phase;
+        public bool ManeuverActive => maneuverExecutor.Active;
+        public string LastManeuverAbort => maneuverExecutor.AbortReason;
         public float CombatEnergy => Aircraft != null ? FighterAITactics.SpecificEnergy(Aircraft) : 0f;
+
+        public bool RequestManeuver(FighterAIManeuver kind)
+        {
+            if (!maneuverExecutor.Begin(kind, Aircraft, terrainHeight, (squadIndex & 1) == 0 ? 1 : -1)) return false;
+            nextAdvancedManeuver = elapsed + 45f;
+            return true;
+        }
 
         public void ShiftOrigin(Vector3 offset)
         {
@@ -60,6 +72,16 @@ namespace PacificCombat
             {
                 stallSpeed = self.Data.StallReferenceSpeed;
                 cruiseSpeed = self.Data.MaximumRecommendedSpeed;
+            }
+            AircraftWeaponSystem weapons = self.GetComponent<AircraftWeaponSystem>();
+            if (weapons != null && weapons.Configuration != null)
+            {
+                WeaponData guns = weapons.Configuration;
+                int cannonCount = guns.MixedCannon ? guns.CannonCount : 0;
+                float machineRate = Mathf.Max(0, guns.GunCount - cannonCount) * guns.RoundsPerMinutePerGun;
+                float cannonRate = cannonCount * guns.CannonRoundsPerMinute;
+                muzzleVelocity = (guns.MuzzleVelocity * machineRate + guns.CannonMuzzleVelocity * cannonRate)
+                    / Mathf.Max(1f, machineRate + cannonRate);
             }
             patrolAltitude = self.transform.position.y;
             waypoint = transform.position + transform.forward * 2500f;
@@ -82,6 +104,7 @@ namespace PacificCombat
             elapsed += deltaTime;
             if (Aircraft.IsDestroyed)
             {
+                maneuverExecutor.Abort("Aircraft destroyed");
                 machine.Set(FighterAIState.Dead, elapsed);
                 Aircraft.Controls = default;
                 return;
@@ -96,15 +119,23 @@ namespace PacificCombat
             UpdateAim();
             if (!recover && (State == FighterAIState.Attack || State == FighterAIState.Pursuit))
                 waypoint = aimPoint + SquadronController.Separation(this);
-            FlightControls controls = FighterAIFlightControl.Fly(Aircraft, waypoint, throttle, recover, stallSpeed,
-                !recover && perception.HasTrack && perception.Range < 1500f);
             Vector3 shot = aimPoint - transform.position;
+            Vector3 sightLineRate = Vector3.Cross(shot, perception.Velocity - Aircraft.Body.linearVelocity) / Mathf.Max(100f, shot.sqrMagnitude);
+            FlightControls controls = FighterAIFlightControl.Fly(Aircraft, waypoint, throttle, recover, stallSpeed,
+                !recover && perception.HasTrack && perception.Range < 1500f,
+                State == FighterAIState.Attack || State == FighterAIState.Pursuit, sightLineRate);
             float distance = shot.magnitude;
             float alignment = Vector3.Dot(transform.forward, shot / Mathf.Max(1f, distance));
             // Gate on the actual gun axis, never on desired orientation or a hidden hit probability.
             controls.Fire = !terrainRecovery && perception.Visible && State == FighterAIState.Attack
                 && distance > 100f && distance < 800f && alignment > Mathf.Cos(1.8f * Mathf.Deg2Rad)
                 && SquadronController.ClearFireLane(this, transform.forward, distance);
+            if (terrainRecovery) maneuverExecutor.Abort("Terrain recovery has priority");
+            if (maneuverExecutor.Step(Aircraft, deltaTime, terrainHeight, out FlightControls maneuverControls))
+            {
+                controls = maneuverControls;
+                Maneuver = maneuverExecutor.Kind;
+            }
             Aircraft.Controls = controls;
         }
 
@@ -208,6 +239,13 @@ namespace PacificCombat
                 throttle = 0.25f;
                 waypoint.y = Mathf.Max(waypoint.y, transform.position.y + 400f);
                 Maneuver = FighterAIManeuver.ClimbingReposition;
+            }
+            if (difficulty >= FighterDifficulty.Veteran && !terrainRecovery && !maneuverExecutor.Active && elapsed >= nextAdvancedManeuver)
+            {
+                if (State == FighterAIState.DefensiveTurn)
+                    RequestManeuver((squadIndex & 1) == 0 ? FighterAIManeuver.BarrelRollDefense : FighterAIManeuver.RollingScissors);
+                else if (State == FighterAIState.OvershootRecovery)
+                    RequestManeuver(perception.Position.y < transform.position.y - 250f ? FighterAIManeuver.SplitS : FighterAIManeuver.Immelmann);
             }
         }
 

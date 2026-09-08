@@ -13,7 +13,7 @@ namespace PacificCombat
 
         public Vector3 Apply(Rigidbody body, float density, float liftCoefficient, float dragCoefficient)
         {
-            Vector3 velocity = body.GetPointVelocity(transform.position);
+            Vector3 velocity = body.GetPointVelocity(transform.position) - PacificEnvironment.WindVelocity(transform.position);
             float speedSquared = velocity.sqrMagnitude;
             if (speedSquared < 1f) { LastLift = 0f; return Vector3.zero; }
             Vector3 direction = velocity / Mathf.Sqrt(speedSquared);

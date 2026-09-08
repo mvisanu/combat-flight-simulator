@@ -4,6 +4,7 @@ namespace PacificCombat
 {
     public sealed class AircraftPhysics : MonoBehaviour
     {
+        public bool AdvancedFlight = true;
         public float Airspeed { get; private set; }
         public float Altitude { get; private set; }
         public float AngleOfAttack { get; private set; }
@@ -53,7 +54,8 @@ namespace PacificCombat
             if (aircraft == null) return;
             var body = aircraft.Body;
             var data = aircraft.Data;
-            Vector3 velocity = body.linearVelocity;
+            Vector3 groundVelocity = body.linearVelocity;
+            Vector3 velocity = groundVelocity - PacificEnvironment.WindVelocity(transform.position);
             Vector3 localVelocity = transform.InverseTransformDirection(velocity);
             Airspeed = velocity.magnitude;
             Altitude = transform.position.y;
@@ -63,6 +65,12 @@ namespace PacificCombat
             float cl = EvaluateLiftCoefficient(AngleOfAttack, data, aircraft.Controls.Flaps);
             float separation = Mathf.InverseLerp(data.StallAngle, data.StallAngle + 20f, Mathf.Abs(AngleOfAttack));
             IsStalled = separation > .03f;
+            if (!AdvancedFlight)
+            {
+                float attached = Mathf.Clamp(data.TrimLiftCoefficient + AngleOfAttack * Mathf.Deg2Rad * data.LiftSlope + (aircraft.Controls.Flaps ? .35f : 0), -data.MaximumLiftCoefficient, data.MaximumLiftCoefficient);
+                cl = Mathf.Lerp(cl, attached, .65f);
+                separation *= .25f;
+            }
             float overspeed = Mathf.Max(0f, Airspeed / data.MaximumRecommendedSpeed - 1f);
             float cd = data.BaseDragCoefficient + data.InducedDragCoefficient * cl * cl + separation * .8f + overspeed * overspeed * .15f;
             if (aircraft.Controls.Flaps) cd += .028f;
@@ -88,12 +96,15 @@ namespace PacificCombat
                 aircraft.Controls.Yaw * data.YawAuthority * authority + beta * airflow * 1.5f - rates.y * 1.8f,
                 -aircraft.Controls.Roll * data.RollAuthority * authority - rates.z * 2.7f);
             // Separated flow plus sideslip produces a recoverable asymmetric wing drop/spin.
-            acceleration.z += separation * (beta * 2f + Mathf.Sin(Time.fixedTime * 17f) * .07f);
-            acceleration.y += separation * beta * .6f;
+            if (AdvancedFlight)
+            {
+                acceleration.z += separation * (beta * 2f + Mathf.Sin(Time.fixedTime * 17f) * .07f);
+                acceleration.y += separation * beta * .6f;
+            }
             body.AddRelativeTorque(acceleration, ForceMode.Acceleration);
-            Vector3 specificForce = (velocity - previousVelocity) / Mathf.Max(.001f, dt) - UnityEngine.Physics.gravity;
+            Vector3 specificForce = (groundVelocity - previousVelocity) / Mathf.Max(.001f, dt) - UnityEngine.Physics.gravity;
             GForce = Mathf.Lerp(GForce, Vector3.Dot(specificForce, transform.up) / 9.81f, .2f);
-            previousVelocity = velocity;
+            previousVelocity = groundVelocity;
         }
     }
 }

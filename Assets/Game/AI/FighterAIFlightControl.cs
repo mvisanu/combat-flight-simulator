@@ -5,7 +5,8 @@ namespace PacificCombat
     public static class FighterAIFlightControl
     {
         public static FlightControls Fly(AircraftController aircraft, Vector3 waypoint, float throttle,
-            bool recovering, float stallSpeed, bool preciseAim = false)
+            bool recovering, float stallSpeed, bool preciseAim = false, bool compensateSideslip = true,
+            Vector3 trackingAngularVelocity = default)
         {
             Transform frame = aircraft.transform;
             Vector3 desired = (waypoint - frame.position).normalized;
@@ -29,7 +30,14 @@ namespace PacificCombat
                 // push-over produced by atan2 when the rear target sits just below us.
                 pitchError = 12f * Mathf.Clamp01(1f - Mathf.Abs(bankError) / 90f);
             }
-            float elevator = pitchError * (preciseAim ? 0.1f : 0.055f) + rates.x * 0.3f;
+            // The pilot adapts stick deflection to the configured control authority. This
+            // preserves the requested response across airframes without changing their forces.
+            float pitchGain = preciseAim && aircraft.Data != null ? 2.15f / Mathf.Max(0.5f, aircraft.Data.PitchAuthority) : 1f;
+            float rollGain = preciseAim && aircraft.Data != null ? 3.6f / Mathf.Max(0.5f, aircraft.Data.RollAuthority) : 1f;
+            float yawGain = preciseAim && aircraft.Data != null ? 1.1f / Mathf.Max(0.3f, aircraft.Data.YawAuthority) : 1f;
+            float elevator = (pitchError * (preciseAim ? 0.1f : 0.055f) + rates.x * 0.3f) * pitchGain;
+            float rudderTrim = 0f;
+            float rudderTracking = 0f;
             // Cancel the shared aerodynamic restoring moment, rather than adding a fixed
             // pitch offset that leaves the gun axis permanently above the requested aim.
             if (aircraft.Physics != null && aircraft.Data != null)
@@ -41,6 +49,22 @@ namespace PacificCombat
                 float authority = data.PitchAuthority * compression * Mathf.Lerp(1f, 0.3f, separation) * aircraft.ControlHealth;
                 float trim = aircraft.Physics.AngleOfAttack * Mathf.Deg2Rad * 1.8f / Mathf.Max(0.1f, authority);
                 elevator += Mathf.Clamp(trim, -0.45f, 0.45f);
+                if (preciseAim && compensateSideslip)
+                {
+                    Vector3 localVelocity = frame.InverseTransformDirection(aircraft.Body.linearVelocity);
+                    float sideslip = Mathf.Atan2(localVelocity.x, Mathf.Max(2f, Mathf.Abs(localVelocity.z)));
+                    float yawAuthority = data.YawAuthority * compression * Mathf.Lerp(1f, 0.3f, separation) * aircraft.ControlHealth;
+                    // The fin attempts to align the nose with velocity. A gun solution often
+                    // needs a small slip angle, so cancel that restoring moment before aiming.
+                    rudderTrim = Mathf.Clamp(-sideslip * 1.5f / Mathf.Max(0.1f, yawAuthority), -0.3f, 0.3f);
+                    Vector3 trackingRates = frame.InverseTransformDirection(trackingAngularVelocity);
+                    float airflow = Mathf.Clamp(speed * speed / 10000f, 0.015f, 1.65f);
+                    // Following a moving sight line requires sustained angular velocity.
+                    // Feed forward the shared model's damping moment instead of waiting for
+                    // a large angular error to generate that moment through proportional gain.
+                    elevator -= Mathf.Clamp(trackingRates.x * (2.4f / Mathf.Max(0.1f, authority * airflow) + 0.3f * pitchGain), -0.4f, 0.4f);
+                    rudderTracking = Mathf.Clamp(trackingRates.y * (1.8f / Mathf.Max(0.1f, yawAuthority * airflow) + 0.4f * yawGain), -0.3f, 0.3f);
+                }
             }
             if (Mathf.Abs(currentBank) > 95f) elevator = Mathf.Max(0f, elevator);
             if (speed < stallSpeed * 1.15f) elevator = Mathf.Min(elevator, -0.08f);
@@ -48,10 +72,10 @@ namespace PacificCombat
             return new FlightControls
             {
                 Pitch = Mathf.Clamp(elevator, -0.6f, 0.85f),
-                Roll = Mathf.Clamp(bankError * 0.024f + rates.z * 0.3f, -1f, 1f),
+                Roll = Mathf.Clamp((bankError * 0.024f + rates.z * 0.3f) * rollGain, -1f, 1f),
                 Yaw = preciseAim
-                    ? Mathf.Clamp(Mathf.Atan2(localDesired.x, localDesired.z) * Mathf.Rad2Deg * 0.025f - rates.y * 0.4f, -0.35f, 0.35f)
-                    : Mathf.Clamp(headingError * 0.004f - rates.y * 0.3f, -0.25f, 0.25f),
+                    ? Mathf.Clamp((Mathf.Atan2(localDesired.x, localDesired.z) * Mathf.Rad2Deg * 0.025f - rates.y * 0.4f) * yawGain + rudderTrim + rudderTracking, -0.35f, 0.35f)
+                    : Mathf.Clamp((headingError * 0.004f - rates.y * 0.3f) * yawGain, -0.25f, 0.25f),
                 Throttle = Mathf.Clamp01(throttle),
                 Gear = false,
                 Flaps = !recovering && speed > stallSpeed * 1.2f && speed < stallSpeed * 1.5f && Mathf.Abs(headingError) > 45f,

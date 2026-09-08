@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: P51D_Data
   m_EditorClassIdentifier: 
   AircraftName: P-51D Mustang
+  Type: 0
   Mass: 4200
   WingArea: 21.83
   WingSpan: 11.28
@@ -40,3 +41,7 @@ MonoBehaviour:
   FullPowerFuelConsumption: 380
   MaximumFuelLeakRate: 6
   FireFuelConsumption: 2
+  MaximumLandingSinkSpeed: 3.5
+  CoolantLimitC: 125
+  CriticalEngineTemperatureC: 150
+  CoolingTimeSeconds: 70

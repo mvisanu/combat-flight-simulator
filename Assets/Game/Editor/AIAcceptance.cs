@@ -9,6 +9,118 @@ namespace PacificCombat.Editor
 {
     public static class AIAcceptance
     {
+        public static void RunAll()
+        {
+            RunRoster();
+            Run();
+        }
+
+        public static void RunRoster()
+        {
+            if (!Application.isBatchMode) throw new InvalidOperationException("Roster acceptance requires an isolated batch editor.");
+            var report = new System.Text.StringBuilder();
+            SimulationMode previousMode = UnityEngine.Physics.simulationMode;
+            SceneSetup[] setup = EditorSceneManager.GetSceneManagerSetup();
+            try
+            {
+                EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                UnityEngine.Physics.simulationMode = SimulationMode.Script;
+                AircraftType[] players = { AircraftType.P38Lightning, AircraftType.A6MZero, AircraftType.P51D, AircraftType.Bf109 };
+                AircraftType[] enemies = { AircraftType.Bf109, AircraftType.P51D, AircraftType.P38Lightning, AircraftType.A6MZero };
+                bool allFired = true;
+                for (int matchup = 0; matchup < players.Length; matchup++)
+                {
+                    AircraftData playerData = RosterData(players[matchup]), enemyData = RosterData(enemies[matchup]);
+                    AircraftController player = Spawn("Roster player", playerData, new Vector3(0, 3050, 0), Quaternion.identity, true);
+                    var fighters = new FighterAIController[4];
+                    var weapons = new AircraftWeaponSystem[4];
+                    var minimumAngle = new float[] {180f,180f,180f,180f};
+                    var minimumRange = new float[] {float.MaxValue,float.MaxValue,float.MaxValue,float.MaxValue};
+                    var bestAimInfo = new string[4];
+                    try
+                    {
+                        for (int i = 0; i < fighters.Length; i++)
+                        {
+                            AircraftController aircraft = Spawn("Roster enemy " + i, enemyData,
+                                new Vector3((i - 1.5f) * 180f, 3150f + i * 35f, 4000f + Mathf.Abs(i - 1.5f) * 80f), Quaternion.Euler(0, 180, 0), false);
+                            aircraft.Body.linearVelocity = aircraft.transform.forward * 105f;
+                            weapons[i] = aircraft.gameObject.AddComponent<AircraftWeaponSystem>();
+                            weapons[i].Initialize(aircraft);
+                            fighters[i] = aircraft.gameObject.AddComponent<FighterAIController>();
+                            fighters[i].Initialize(aircraft, player, i);
+                        }
+                        UnityEngine.Physics.SyncTransforms();
+                        const float dt = 0.02f;
+                        for (int tick = 0; tick < 3000; tick++)
+                        {
+                            player.Controls = new FlightControls { Throttle = 0.8f };
+                            StepAircraft(player, dt);
+                            for (int i = 0; i < fighters.Length; i++)
+                            {
+                                FighterAIController ai = fighters[i];
+                                ai.Simulate(dt);
+                                weapons[i].Simulate(dt);
+                                float range = Vector3.Distance(player.transform.position, ai.transform.position);
+                                minimumRange[i] = Mathf.Min(minimumRange[i], range);
+                                float angle = Vector3.Angle(ai.transform.forward, ai.AimPoint - ai.transform.position);
+                                if (range < 850f && angle < minimumAngle[i])
+                                {
+                                    minimumAngle[i] = angle;
+                                    bestAimInfo[i] = $"t={tick*dt:F2}s range={range:F1}m aim distance={Vector3.Distance(ai.AimPoint,ai.transform.position):F1}m state={ai.State} visible={ai.TargetVisible} clear={SquadronController.ClearFireLane(ai,ai.transform.forward,range)}";
+                                }
+                                StepAircraft(ai.Aircraft, dt);
+                            }
+                            UnityEngine.Physics.Simulate(dt);
+                            for (int i = 0; i < fighters.Length; i++)
+                            {
+                                float speed = fighters[i].Aircraft.Body.linearVelocity.magnitude;
+                                Require(Finite(speed) && speed < 400f && fighters[i].transform.position.y > 20f, "Roster aircraft crashed or diverged");
+                            }
+                        }
+                        int rounds = 0;
+                        for (int i = 0; i < fighters.Length; i++)
+                        {
+                            rounds += weapons[i].ShotsFired;
+                            report.AppendLine($"{players[matchup]} vs {enemies[matchup]} AI{i}: rounds={weapons[i].ShotsFired}, closest={minimumRange[i]:F1}m, min aim within850m={minimumAngle[i]:F2}deg ({bestAimInfo[i]})");
+                        }
+                        allFired &= rounds > 0;
+                    }
+                    finally
+                    {
+                        for (int i = 0; i < fighters.Length; i++) if (fighters[i] != null) UnityEngine.Object.DestroyImmediate(fighters[i].gameObject);
+                        UnityEngine.Object.DestroyImmediate(player.gameObject);
+                        UnityEngine.Object.DestroyImmediate(playerData);
+                        UnityEngine.Object.DestroyImmediate(enemyData);
+                    }
+                }
+                Require(allFired, "One or more roster aircraft types never fired actual weapons in the head-on encounter");
+                report.AppendLine("PASS: all four aircraft types flew and fired real weapons in60s head-on encounters.");
+            }
+            catch (Exception exception) { report.AppendLine("FAIL: " + exception); throw; }
+            finally
+            {
+                UnityEngine.Physics.simulationMode = previousMode;
+                bool saved = false;
+                for (int i = 0; i < setup.Length; i++) saved |= !string.IsNullOrEmpty(setup[i].path);
+                if (saved) EditorSceneManager.RestoreSceneManagerSetup(setup);
+                else EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                Directory.CreateDirectory("Logs");
+                File.WriteAllText("Logs/ai-roster-acceptance.txt", report.ToString());
+                Debug.Log(report.ToString());
+            }
+        }
+
+        static AircraftData RosterData(AircraftType type)
+        {
+            switch (type)
+            {
+                case AircraftType.A6MZero: return AircraftData.CreateZero();
+                case AircraftType.Bf109: return AircraftData.CreateBf109();
+                case AircraftType.P38Lightning: return AircraftData.CreateLightning();
+                default: return AircraftData.CreateMustang();
+            }
+        }
+
         [MenuItem("Pacific Combat/Run AI Acceptance")]
         public static void Run()
         {
@@ -188,6 +300,7 @@ namespace PacificCombat.Editor
             var roleMask = new int[4];
             var lateRange = new float[] {float.MaxValue, float.MaxValue, float.MaxValue, float.MaxValue};
             var lateAngle = new float[] {180f,180f,180f,180f};
+            var lateInfo = new string[4];
             for (int i = 0; i < fighters.Length; i++)
             {
                 AircraftController aircraft = Spawn("Extended Zero " + i, zero,
@@ -226,7 +339,12 @@ namespace PacificCombat.Editor
                     if (time > 45f)
                     {
                         lateRange[i] = Mathf.Min(lateRange[i], range);
-                        if (range < 850f) lateAngle[i] = Mathf.Min(lateAngle[i], Vector3.Angle(ai.transform.forward, ai.AimPoint - ai.transform.position));
+                        float angle = Vector3.Angle(ai.transform.forward, ai.AimPoint - ai.transform.position);
+                        if (range < 850f && angle < lateAngle[i])
+                        {
+                            lateAngle[i] = angle;
+                            lateInfo[i] = $"t={time:F1} range={range:F0} role={ai.Role} separation={SquadronController.Separation(ai).magnitude:F1}m localAim={ai.transform.InverseTransformDirection((ai.AimPoint-ai.transform.position).normalized)}";
+                        }
                     }
                     if (controls.Fire)
                     {
@@ -255,7 +373,7 @@ namespace PacificCombat.Editor
             {
                 if (shotFrames[i] > 0) participants++;
                 repeatedPasses += latePasses[i];
-                report.AppendLine($"Extended AI{i}: firing time={shotFrames[i] * dt:F2}s, distinct firing passes after45s={latePasses[i]}, role mask={roleMask[i]}, late closest={lateRange[i]:F0}m / aim within850m={lateAngle[i]:F1}deg");
+                report.AppendLine($"Extended AI{i}: firing time={shotFrames[i] * dt:F2}s, distinct firing passes after45s={latePasses[i]}, role mask={roleMask[i]}, late closest={lateRange[i]:F0}m / aim within850m={lateAngle[i]:F1}deg ({lateInfo[i]})");
                 Require(roleMask[i] == 7, "AI " + i + " did not rotate through attacker, wingman, and support roles");
             }
             Require(completedLegs >= 3, "Reference pilot failed to maneuver through the circuit");

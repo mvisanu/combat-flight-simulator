@@ -11,9 +11,24 @@ namespace PacificCombat
         public AircraftData EnemyAircraft;
         public WeaponData PlayerWeapons;
         public WeaponData EnemyWeapons;
+        public AircraftCatalog Catalog;
+        public MissionPreset Scenario;
+        public WeatherPreset Weather = WeatherPreset.Scattered;
         public float StartingAltitude = 3048f;
         public float StartingSpeed = 111.76f;
         public float EnemyRange = 4000f;
-        [Range(1, 16)] public int EnemyCount = 4;
+        [Range(0, 16)] public int EnemyCount = 4;
+
+        public void ConfigureAircraft(AircraftCatalog catalog, AircraftType player, AircraftType enemy)
+        {
+            if (!catalog) throw new System.ArgumentNullException(nameof(catalog));
+            var playerEntry = catalog.Get(player);
+            var enemyEntry = catalog.Get(enemy);
+            Catalog = catalog;
+            PlayerAircraft = playerEntry.Aircraft;
+            PlayerWeapons = playerEntry.Weapons;
+            EnemyAircraft = enemyEntry.Aircraft;
+            EnemyWeapons = enemyEntry.Weapons;
+        }
     }
 }

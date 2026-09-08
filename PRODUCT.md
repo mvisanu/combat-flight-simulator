@@ -8,7 +8,7 @@ Windows PC, native Unity game.
 Unity 6 LTS, C#, URP, Unity Input System. Explicitly specified in prompt.md.
 
 ## Product Purpose
-A playable P-51D versus four A6M Zero dogfight over the Pacific. Physics, energy management and pilot controls drive combat.
+A playable custom dogfight over the Pacific. Players can fly the P-51D Mustang, A6M Zero, Bf 109 G-6 or P-38J Lightning and select any of those types as opponents. Physics, energy management and pilot controls drive combat.
 
 ## Users
 PC flight simulation players using keyboard, mouse, gamepad or flight controls.

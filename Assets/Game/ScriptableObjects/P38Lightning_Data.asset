@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: beb68a94129097846ab8d98fa65245b1, type: 3}
+  m_Name: P38Lightning_Data
+  m_EditorClassIdentifier: 
+  AircraftName: P-38J Lightning
+  Type: 3
+  Mass: 7800
+  WingArea: 30.4
+  WingSpan: 15.8
+  EnginePower: 2100000
+  MaximumThrust: 22800
+  MaxRPM: 3000
+  SuperchargerAltitude: 7600
+  MaximumRecommendedSpeed: 190
+  StallReferenceSpeed: 53
+  MaximumLiftCoefficient: 1.65
+  LiftSlope: 5.05
+  TrimLiftCoefficient: 0.4
+  StallAngle: 17
+  BaseDragCoefficient: 0.026
+  InducedDragCoefficient: 0.047
+  PitchAuthority: 1.4
+  RollAuthority: 2.9
+  YawAuthority: 0.72
+  MaximumStructuralG: 7.5
+  MaximumSafeDiveSpeed: 225
+  HighSpeedControlLoss: 0.62
+  Durability: 1.35
+  FuelCapacity: 1500
+  IdleFuelConsumption: 80
+  FullPowerFuelConsumption: 680
+  MaximumFuelLeakRate: 8
+  FireFuelConsumption: 3
+  MaximumLandingSinkSpeed: 3.5
+  CoolantLimitC: 125
+  CriticalEngineTemperatureC: 150
+  CoolingTimeSeconds: 70

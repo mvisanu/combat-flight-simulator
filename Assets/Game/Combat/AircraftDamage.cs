@@ -10,9 +10,12 @@ namespace PacificCombat
         public event Action<Vector3, float> Hit;
         public AircraftController Aircraft { get; private set; }
         public bool Burning { get; private set; }
+        public float FireIntensity { get; private set; }
+        public event Action<DamageZoneType> StructuralFailure;
         public bool FuelLeaking => FuelAvailable && Health(DamageZoneType.FuelTank) < .65f;
         bool FuelAvailable => !Aircraft || !Aircraft.Engine || !Aircraft.Engine.Fuel || Aircraft.Engine.Fuel.HasFuel;
         public bool SimplifiedDamage;
+        public bool DiagnosticIgnoreDamage;
         public float OverallHealth
         {
             get { float sum = 0; for (int i = 0; i < health.Length; i++) sum += health[i]; return sum / health.Length; }
@@ -29,6 +32,7 @@ namespace PacificCombat
             for (int i = 0; i < health.Length; i++) health[i] = 1;
             Burning = killReported = false;
             burnTime = stress = 0;
+            FireIntensity = 0;
             if (aircraft.Engine && aircraft.Engine.Fuel) aircraft.Engine.Fuel.SetTankDamage(1, false);
         }
 
@@ -37,13 +41,17 @@ namespace PacificCombat
         public void ApplyDamage(DamageZoneType zone, float amount, Vector3 point)
         {
             if (!Aircraft || killReported || amount <= 0) return;
+            if (DiagnosticIgnoreDamage && Debug.isDebugBuild) { Hit?.Invoke(point,amount); return; }
+            if (SimplifiedDamage) amount *= .5f;
             if (SimplifiedDamage && zone == DamageZoneType.Pilot) zone = DamageZoneType.Fuselage;
             int index = (int)zone;
+            float before = health[index];
             health[index] = Mathf.Clamp01(health[index] - amount / (capacity[index] * Aircraft.Data.Durability));
             Hit?.Invoke(point, amount);
             if (FuelAvailable && ((zone == DamageZoneType.FuelTank && health[index] < .32f) ||
-                (zone == DamageZoneType.Engine && health[index] < .15f))) Burning = true;
+                (zone == DamageZoneType.Engine && health[index] < .15f))) Ignite();
             UpdateFlightDamage();
+            if (!SimplifiedDamage && before > 0 && health[index] <= 0 && (zone == DamageZoneType.LeftWing || zone == DamageZoneType.RightWing || zone == DamageZoneType.HorizontalStabilizer || zone == DamageZoneType.VerticalStabilizer)) StructuralFailure?.Invoke(zone);
             if (Health(DamageZoneType.Pilot) <= 0 || Health(DamageZoneType.Cockpit) <= 0 ||
                 Health(DamageZoneType.LeftWing) <= 0 || Health(DamageZoneType.RightWing) <= 0 ||
                 Health(DamageZoneType.Fuselage) <= 0 || Health(DamageZoneType.HorizontalStabilizer) <= 0)
@@ -72,6 +80,7 @@ namespace PacificCombat
             if (Burning && !FuelAvailable)
             {
                 Burning = false;
+                FireIntensity = 0;
                 Aircraft.Engine.Fuel.SetTankDamage(Health(DamageZoneType.FuelTank), false);
             }
             if (killReported) return;
@@ -87,16 +96,28 @@ namespace PacificCombat
             if (Burning)
             {
                 burnTime += dt;
-                ApplyDamage(DamageZoneType.Engine, 5 * dt, transform.position);
-                ApplyDamage(DamageZoneType.Fuselage, 3 * dt, transform.position);
+                FireIntensity = Mathf.MoveTowards(FireIntensity, 1, dt * .12f);
+                ApplyDamage(DamageZoneType.Engine, 5 * Mathf.Lerp(.4f, 1, FireIntensity) * dt, transform.position);
+                ApplyDamage(DamageZoneType.Fuselage, 3 * FireIntensity * dt, transform.position);
+                ApplyDamage(DamageZoneType.FuelTank, .4f * FireIntensity * dt, transform.position);
                 if (burnTime > 24 || Aircraft.EngineHealth <= 0) DestroyAircraft();
             }
+        }
+        public void Ignite()
+        {
+            if (!FuelAvailable || Burning || SimplifiedDamage) return;
+            Burning = true; FireIntensity = .2f;
+            if (Aircraft && Aircraft.Engine && Aircraft.Engine.Fuel) Aircraft.Engine.Fuel.SetTankDamage(Health(DamageZoneType.FuelTank), true);
         }
 
         void OnCollisionEnter(Collision collision)
         {
             if (!Aircraft || killReported) return;
-            float speed = collision.relativeVelocity.magnitude;
+            // Tangential runway speed is not impact speed. Walls and head-on
+            // collisions still deliver their full closing velocity along the normal.
+            float speed = 0;
+            for (int i = 0; i < collision.contactCount; i++)
+                speed = Mathf.Max(speed, Mathf.Abs(Vector3.Dot(collision.relativeVelocity, collision.GetContact(i).normal)));
             if (speed > 18) DestroyAircraft();
             else if (speed > 4) ApplyDamage(DamageZoneType.Fuselage, speed * 3, transform.position);
         }

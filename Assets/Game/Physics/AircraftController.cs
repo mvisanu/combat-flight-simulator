@@ -16,6 +16,7 @@ namespace PacificCombat
         public Rigidbody Body;
         public AircraftPhysics Physics;
         public AircraftEngine Engine;
+        public AircraftGroundHandling GroundHandling;
         public FlightControls Controls;
         public bool IsPlayer;
         public int Team;
@@ -55,6 +56,9 @@ namespace PacificCombat
             Controls = new FlightControls { Throttle = .78f };
             Engine.Initialize(this);
             Physics.Initialize(this);
+            GroundHandling = GetComponent<AircraftGroundHandling>();
+            if (!GroundHandling) GroundHandling = gameObject.AddComponent<AircraftGroundHandling>();
+            GroundHandling.Initialize(this);
         }
 
         void FixedUpdate()
@@ -67,6 +71,7 @@ namespace PacificCombat
             if (IsDestroyed) Controls = default;
             Engine.Simulate(Time.fixedDeltaTime);
             Physics.Simulate(Time.fixedDeltaTime);
+            GroundHandling.Simulate(Time.fixedDeltaTime);
         }
     }
 }

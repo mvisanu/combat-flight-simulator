@@ -13,3 +13,5 @@
 *.user
 *.log
 artifacts/
+*.blend1
+*.blend2

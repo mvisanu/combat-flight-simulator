@@ -1,15 +1,100 @@
-﻿{
+{
   "schemaVersion": 2,
-  "generatedAt": "2026-09-05T00:00:00Z",
+  "generatedAt": "2026-09-07T02:46:15.176125+00:00",
   "title": "Design System: Pacific Fighter Sweep",
   "extensions": {
     "motion": [
-      { "name": "propeller-blur", "value": "RPM > 700", "purpose": "Replace solid blades with the transparent blur disk to preserve cockpit visibility." }
+      {
+        "name": "propeller-blur",
+        "value": "RPM > 700",
+        "purpose": "Replace solid blades with the transparent blur disk to preserve cockpit visibility."
+      },
+      {
+        "name": "instrument-response",
+        "value": "1 - exp(-unscaledDeltaTime * 9)",
+        "purpose": "Smooth physical needles and attitude toward live telemetry."
+      },
+      {
+        "name": "lightning-propellers",
+        "value": "Two nacelle propellers rotate in opposite directions; both switch to blur above 700 RPM.",
+        "purpose": "Preserve the twin-engine silhouette and clear central gun pod; tricycle gear follows the gear state."
+      }
     ],
     "breakpoints": [],
     "shadows": [],
     "platform": "Native Windows Unity IMGUI; HTML snippets are documentation previews, not runtime components.",
-    "canvas": { "width": 1600, "height": 900, "scaling": "Independent screen width and height ratios; 80% at 1280 x 720." }
+    "canvas": {
+      "width": 1600,
+      "height": 900,
+      "scaling": "Independent screen width and height ratios; 80% at 1280 x 720."
+    },
+    "cockpit": {
+      "fieldOfViewDegrees": 80,
+      "eyePositionMetres": [
+        0,
+        1.28,
+        -0.12
+      ],
+      "gauges": [
+        "IAS",
+        "Attitude",
+        "Altitude",
+        "Heading",
+        "RPM",
+        "Fuel",
+        "Climb",
+        "Oil temperature",
+        "Engine temperature",
+        "Manifold pressure",
+        "Oil pressure"
+      ],
+      "hud": "Compact throttle/G panel leaves room for physical gauges; established edge mission, navigation and weapon panels remain.",
+      "roster": "Shared game layout; Zero/Bf109 metric airspeed/altitude/manifold faces; Mustang/P38 imperial flight faces."
+    },
+    "world": "Authored Blender airframes and central volcanic island; deterministic surrounding relief, reef shelves, noise-filtered ocean, ray-marched cumulus volumes with optical-depth AI visibility and maritime atmosphere. Runtime Unity shaders are authoritative. Bf 109 uses a faceted canopy and dark painted panels with bordered crosses; P-38 uses aluminum twin nacelles and booms with nose guns.",
+    "aircraftSelection": {
+      "choices": [
+        "P-51D Mustang",
+        "A6M Zero",
+        "Bf 109 G-6",
+        "P-38J Lightning"
+      ],
+      "rows": [
+        "YOUR AIRCRAFT",
+        "ENEMY AIRCRAFT"
+      ],
+      "selection": "Independent player and enemy choices; selected short name in each row label plus established active fill.",
+      "nationality": "Each choice includes a 28 x 15 design-unit raster WWII flag; the selected label spells out United States, Japan or Germany. US 48-star flag, Japanese Hinomaru and German 1935-1945 flag identify the roster; aircraft retain service insignia.",
+      "liveryReferenceStatus": "images/planes.png plus images/bf109.png and images/p38.png define the requested paint schemes; reference art acceptance and paired rendered captures cover all four aircraft.",
+      "choiceSizeDesignUnits": [
+        140,
+        42
+      ],
+      "rowLabelYDesignUnits": [
+        340,
+        416
+      ]
+    },
+    "briefing": {
+      "panel": [
+        465,
+        75,
+        670,
+        750
+      ],
+      "missionLabelY": 188,
+      "weatherLabelY": 264,
+      "disclosure": "Prototype aircraft | Recorded and synthesized audio"
+    },
+    "settings": {
+      "tabs": [
+        "Gameplay",
+        "Graphics",
+        "Audio",
+        "Devices"
+      ],
+      "content": "Scrollable, fixed Back action; existing matte buttons and explicit selection states."
+    }
   },
   "components": [
     {
@@ -23,21 +108,22 @@
   ],
   "narrative": {
     "northStar": "The Reflector Sight",
-    "overview": "The native Windows Unity game gives the 3D flight view priority. The user's WWII reflector sight and unobtrusive HUD are binding; clean placeholder 3D artwork is authorized for the first playable. Preserve Pacific blue water, atmospheric haze and readable aircraft silhouettes. This is the implemented prototype visual system, not a claim of finished production art.",
+    "overview": "The native Windows Unity game gives the 3D flight view priority. The user's WWII reflector sight and unobtrusive HUD remain binding. The requested Blender MCP upgrade adds authored, historically inspired metal and painted airframes, a modeled cockpit with working analog gauges, and natural Pacific relief, coasts, clouds and haze. These are original game models, not blueprint-certified historical reconstructions.",
     "keyCharacteristics": [
       "Open center with compact instruments at the screen edges.",
       "Amber targeting, warm ivory telemetry and matte charcoal controls.",
-      "Geometric aircraft, islands and cloud clusters with restrained surface detail."
+      "Authored airframes and physical instruments over volcanic relief, coral shelves and soft cumulus."
     ],
     "rules": [],
     "dos": [
       "Do preserve the WWII reflector sight and unobtrusive edge HUD.",
       "Do inspect flight, pause, settings and cockpit together at 1280 x 720 after visual changes.",
-      "Do keep ocean detail filtered, button surfaces matte and toggle state explicit."
+      "Do keep ocean detail filtered, button surfaces matte and toggle state explicit.",
+      "Do keep physical gauges readable and preserve the distinction between cockpit IAS and HUD true airspeed."
     ],
     "donts": [
       "Don't substitute opaque high-RPM propeller geometry that blocks the forward view.",
-      "Don't describe the prototype geometry as production aircraft art or treat screenshots as evidence of a performance target."
+      "Don't claim historical certification or treat screenshots as evidence of a performance target."
     ]
   }
 }

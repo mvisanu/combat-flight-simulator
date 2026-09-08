@@ -44,6 +44,7 @@ namespace PacificCombat
             Vector3 direction = separation / Mathf.Max(1f, actualRange);
             float cone = now - lastSeen < 12f ? -0.98f : -0.35f;
             Visible = actualRange < detectionRange && Vector3.Dot(self.transform.forward, direction) > cone;
+            if (Visible && EnvironmentVisibility.IsObscured(self.transform.position, target.transform.position)) Visible = false;
             // Start beyond our own airframe. Only the nearest hit can block visual contact.
             if (Visible && actualRange > 35f && Physics.Raycast(self.transform.position + direction * 18f,
                     direction, out RaycastHit hit, actualRange - 28f, obstructionMask, QueryTriggerInteraction.Ignore))

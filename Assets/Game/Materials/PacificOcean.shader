@@ -1,6 +1,6 @@
 Shader "PacificCombat/Ocean"
 {
-    Properties { _BaseColor ("Ocean", Color) = (0.025,0.16,0.23,1) }
+    Properties { _BaseColor ("Ocean", Color) = (0.018,0.125,0.19,1) }
     SubShader
     {
         Tags { "RenderType"="Opaque" "RenderPipeline"="UniversalPipeline" }
@@ -19,19 +19,27 @@ Shader "PacificCombat/Ocean"
             CBUFFER_END
             Varyings vert(Attributes input) { Varyings o; o.world=TransformObjectToWorld(input.positionOS.xyz); o.positionCS=TransformWorldToHClip(o.world); o.fog=ComputeFogFactor(o.positionCS.z); return o; }
             float FilteredWave(float phase) { float footprint=fwidth(phase); return sin(phase)*exp(-footprint*footprint*.5); }
+            float WaterHash(float2 p) { float3 q=frac(float3(p.xyx)*.1031); q+=dot(q,q.yzx+33.33); return frac((q.x+q.y)*q.z); }
+            float WaterNoise(float2 p) { float2 q=floor(p),f=frac(p); f=f*f*(3-2*f); return lerp(lerp(WaterHash(q),WaterHash(q+float2(1,0)),f.x),lerp(WaterHash(q+float2(0,1)),WaterHash(q+1),f.x),f.y); }
             half4 frag(Varyings i):SV_Target
             {
                 float t=_Time.y;
                 float2 p=i.world.xz;
                 float distanceToCamera=distance(_WorldSpaceCameraPos,i.world);
-                float waveStrength=.035*exp(-distanceToCamera*.0007);
-                float3 n=normalize(float3(FilteredWave(p.x*.23+p.y*.08+t*.8)*waveStrength,1,FilteredWave(p.y*.19-p.x*.07+t*.7)*waveStrength));
+                // Randomized surface normals fade before their features become subpixel;
+                // long coherent sine waves otherwise turn into diagonal moire at altitude.
+                float footprint=max(length(ddx(p)),length(ddy(p)));
+                float waveStrength=.06*exp(-distanceToCamera*.001)/(1+footprint*.08);
+                float2 surface=float2(WaterNoise(p*.045+float2(t*.06,0)),WaterNoise(p*.041+float2(37,t*.045)))-.5;
+                float3 n=normalize(float3(surface.x*waveStrength,1,surface.y*waveStrength));
                 float3 v=GetWorldSpaceNormalizeViewDir(i.world);
                 Light sun=GetMainLight();
                 float fresnel=pow(1-saturate(dot(n,v)),4);
-                float glint=pow(saturate(dot(n,normalize(sun.direction+v))),120);
-                float ripples=FilteredWave(p.x*.07+p.y*.06+t*.4)*.003*exp(-distanceToCamera*.0005);
-                half3 color=lerp(_BaseColor.rgb+ripples,half3(.40,.59,.66),fresnel*.6)+sun.color*glint*.45;
+                float glint=pow(saturate(dot(n,normalize(sun.direction+v))),180);
+                float ripples=(WaterNoise(p*.009)-.5)*.002*exp(-distanceToCamera*.0006);
+                float broad=(WaterNoise(p*.0007)-.5)*.2;
+                half3 reflection=lerp(half3(.26,.45,.59),half3(.54,.67,.73),fresnel);
+                half3 color=lerp(_BaseColor.rgb+ripples+broad*.008,reflection,.1+fresnel*.58)+sun.color*glint*.68;
                 return half4(MixFog(color,i.fog),1);
             }
             ENDHLSL

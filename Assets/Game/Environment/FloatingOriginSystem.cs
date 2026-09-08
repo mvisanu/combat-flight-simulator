@@ -11,13 +11,17 @@ namespace PacificCombat
         Transform environment;
         AircraftWeaponSystem[] weapons;
         AircraftEffects[] effects;
+        StructuralDebris[] debris;
         public void Initialize(MissionManager owner, Transform world)
         {
             mission = owner; environment = world;
             weapons = new AircraftWeaponSystem[owner.Enemies.Length + 1];
             effects = new AircraftEffects[weapons.Length];
+            debris = new StructuralDebris[weapons.Length];
+            debris[0] = owner.Player.GetComponent<StructuralDebris>();
             weapons[0] = owner.Weapons; effects[0] = owner.Player.GetComponent<AircraftEffects>();
             for (int i = 0; i < owner.Enemies.Length; i++) { weapons[i + 1] = owner.Enemies[i].GetComponent<AircraftWeaponSystem>(); effects[i + 1] = owner.Enemies[i].GetComponent<AircraftEffects>(); }
+            for (int i = 0; i < owner.Enemies.Length; i++) debris[i + 1] = owner.Enemies[i].GetComponent<StructuralDebris>();
         }
         void FixedUpdate()
         {
@@ -33,6 +37,7 @@ namespace PacificCombat
                 mission.Enemies[i].GetComponent<FighterAIController>().ShiftOrigin(offset);
             }
             for (int i = 0; i < weapons.Length; i++) { weapons[i].ShiftProjectiles(offset); effects[i].ShiftParticles(offset); }
+            for (int i = 0; i < debris.Length; i++) if (debris[i]) debris[i].ShiftOrigin(offset);
             mission.FlightCamera.Shift(offset);
             Physics.SyncTransforms();
         }

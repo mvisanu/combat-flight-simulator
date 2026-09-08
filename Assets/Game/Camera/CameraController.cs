@@ -11,7 +11,8 @@ namespace PacificCombat
         MissionManager mission;
         float lookYaw, lookPitch;
         Vector3 flybyPosition;
-        public void Initialize(MissionManager owner) { mission = owner; Camera = GetComponent<Camera>(); Snap(); }
+        AircraftVisuals aircraftVisuals;
+        public void Initialize(MissionManager owner) { mission = owner; Camera = GetComponent<Camera>(); aircraftVisuals = owner.Player.GetComponent<AircraftVisuals>(); Snap(); }
         public void Snap()
         {
             if (!mission || !mission.Player) return;
@@ -21,7 +22,12 @@ namespace PacificCombat
             flybyPosition = plane.position + plane.forward * 300 + Vector3.right * 80;
         }
         public void Shift(Vector3 offset) { transform.position -= offset; flybyPosition -= offset; }
-        public void SetMode(FlightCameraMode mode) { Mode = mode; lookYaw = lookPitch = 0; Snap(); }
+        public void SetMode(FlightCameraMode mode)
+        {
+            Mode = mode; lookYaw = lookPitch = 0;
+            if (aircraftVisuals) aircraftVisuals.SetCockpitView(mode == FlightCameraMode.Cockpit);
+            Snap();
+        }
         void LateUpdate()
         {
             if (!mission || !mission.Player) return;
@@ -40,9 +46,10 @@ namespace PacificCombat
             Quaternion rotation;
             if (Mode == FlightCameraMode.Cockpit)
             {
-                position = plane.TransformPoint(new Vector3(0, 1.45f, 1.15f));
-                rotation = plane.rotation * Quaternion.Euler(lookPitch, lookYaw, 0);
-                Camera.fieldOfView = 78;
+                position = plane.TransformPoint(CockpitInstruments.EyePosition);
+                rotation = plane.rotation * Quaternion.Euler(10 + lookPitch, lookYaw, 0);
+                Camera.fieldOfView = 80;
+                Camera.nearClipPlane = .035f;
             }
             else if (Mode == FlightCameraMode.Flyby)
             {
@@ -58,7 +65,9 @@ namespace PacificCombat
                 Camera.fieldOfView = Mathf.Lerp(62, 73, mission.Player.Physics.Airspeed / 240);
             }
             transform.position = Mode == FlightCameraMode.Cockpit ? position : Vector3.Lerp(transform.position, position, follow);
-            transform.rotation = Quaternion.Slerp(transform.rotation, rotation, follow);
+            // A cockpit is rigidly attached to its airframe. Chase smoothing inside
+            // the canopy causes the panel and windshield to swim during manoeuvres.
+            transform.rotation = Mode == FlightCameraMode.Cockpit ? rotation : Quaternion.Slerp(transform.rotation, rotation, follow);
         }
     }
 }

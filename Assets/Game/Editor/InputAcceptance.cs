@@ -13,6 +13,8 @@ namespace PacificCombat.Editor
         {
             var originalKeyboard = Keyboard.current;
             Keyboard keyboard = null;
+            var originalGamepad = Gamepad.current;
+            Gamepad gamepad = null;
             GameObject fixture = null;
             InputActionAsset testActions = null;
             var originalSettings = InputSystem.settings;
@@ -59,6 +61,19 @@ namespace PacificCombat.Editor
                 Require(!fire.IsPressed(), "Override removes original key");
                 InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.J)); InputSystem.Update();
                 Require(fire.IsPressed(), "Override accepts replacement key");
+                gamepad = InputSystem.AddDevice<Gamepad>();
+                input.Actions.devices = new InputDevice[] { keyboard, gamepad };
+                input.Calibration.Pitch = new AxisCalibration(); input.Calibration.Roll = new AxisCalibration();
+                InputSystem.QueueStateEvent(keyboard,new KeyboardState());
+                InputSystem.QueueStateEvent(gamepad,new GamepadState { leftStick = new Vector2(.65f,-.45f), rightTrigger = 1 });
+                InputSystem.Update();
+                Require(Mathf.Abs(input.ReadAxis(input.Actions.FindAction("Roll"),1)-input.Calibration.Roll.Signed(.65f))<.01f,
+                    "Gamepad analog roll passes through calibration");
+                Require(Mathf.Abs(input.ReadAxis(input.Actions.FindAction("Pitch"),0)-input.Calibration.Pitch.Signed(-.45f))<.01f,
+                    "Gamepad analog pitch preserves signed input");
+                Require(fire.IsPressed(),"Gamepad trigger fires");
+                InputSystem.QueueStateEvent(gamepad,new GamepadState()); InputSystem.Update();
+                Require(Mathf.Abs(input.ReadAxis(input.Actions.FindAction("Roll"),1))<.001f && !fire.IsPressed(),"Analog release returns to neutral and stops firing");
                 Debug.Log("INPUT ACCEPTANCE PASSED: eight signed axes, trigger press/release and remapped trigger via actual Input System events; user bindings unchanged.");
             }
             finally
@@ -66,6 +81,8 @@ namespace PacificCombat.Editor
                 if (testActions) { testActions.Disable(); UnityEngine.Object.DestroyImmediate(testActions); }
                 if (fixture) UnityEngine.Object.DestroyImmediate(fixture);
                 if (keyboard != null) InputSystem.RemoveDevice(keyboard);
+                if (gamepad != null) InputSystem.RemoveDevice(gamepad);
+                if (originalGamepad != null && originalGamepad.added) originalGamepad.MakeCurrent();
                 if (originalKeyboard != null && originalKeyboard.added) originalKeyboard.MakeCurrent();
                 // 1.8.1 skips feature-flag application when the original flag set
                 // is null, so explicitly clear our flag before restoring it.
