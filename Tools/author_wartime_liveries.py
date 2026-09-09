@@ -17,7 +17,7 @@ def wartime_livery(name,obs):
     global objects
     objects=obs
     # Replace placeholder placement with period upper-left/lower-right US markings.
-    old=('National roundel','Insignia bars','Blue star','US star','Lightning insignia','Balkenkreuz','Fuselage paint panel')
+    old=('National roundel','Insignia bars','Blue star','US star','Lightning insignia','Balkenkreuz','Fuselage paint panel','Anti glare cowling','P38 anti glare engine')
     for o in list(obs):
         if o.name.startswith(old): obs.remove(o); bpy.data.objects.remove(o,do_unlink=True)
     if name=='A6MZero':
@@ -79,7 +79,10 @@ def wartime_livery(name,obs):
                 projected=[Vector(project(q)) for q in (a,b,c)]
                 if (projected[1]-projected[0]).cross(projected[2]-projected[0]).length_squared<1e-12:return
                 start=len(coords);coords.extend([tuple(q) for q in projected]);triangles.append((start,start+1,start+2))
-        for tri in tessellate_polygon([source]):triangle(*[source[q] if isinstance(q,int) else q for q in tri],2)
+        # Narrow nose paint follows rapidly changing curvature; coarser triangles
+        # cut into the cowl and make the anti-glare panel appear striped.
+        subdivisions=5 if label.startswith('Conformal') else 2
+        for tri in tessellate_polygon([source]):triangle(*[source[q] if isinstance(q,int) else q for q in tri],subdivisions)
         return mesh(label,coords,triangles,material,False)
     def rectangle(label,c,r,u,w,h,m,offset=.018):
         patch(label,c,r,u,[(-w/2,-h/2),(w/2,-h/2),(w/2,h/2),(-w/2,h/2)],m,offset)
@@ -102,6 +105,11 @@ def wartime_livery(name,obs):
         r=Vector(v(right));u=Vector(v(up));n=Vector(v(normal))
         o.matrix_world=Matrix(((r.x,u.x,n.x,0),(r.y,u.y,n.y,0),(r.z,u.z,n.z,0),(0,0,0,1)))
         o.location=v(center)
+    if name in ['P51D','Bf109']:
+        rectangle('Conformal cowling anti glare',(0,.6,2.45),(1,0,0),(0,0,-1),.60,1.8,olive if name=='P51D' else rlm_green,.004)
+    if name=='P38Lightning':
+        for side in [-1,1]:
+            rectangle('Conformal nacelle anti glare',(side*2.65,.6,1.65),(1,0,0),(0,0,-1),.54,1.9,olive,.004)
     if name=='P51D':
         # The user's reference shows the European Lou IV-style yellow nose and invasion bands.
         # Wrap fuselage bands onto the loft instead of floating rectangular overlays.

@@ -16,13 +16,15 @@ def cockpit_part(name):
 def build_bf109():
     global objects
     obs=airframe(False); objects=obs
-    discard(obs,lambda n:n.startswith(('National','Insignia','Blue star','US star','Canopy','Radiator')))
+    discard(obs,lambda n:n.startswith(('National','Insignia','Blue star','US star','Canopy','Radiator','Mustang chin')))
     for o in obs:
         if not cockpit_part(o.name): o.matrix_world=Matrix.Diagonal((.88,.94,1,1))@o.matrix_world
         original=o.data.materials[0]
         if original==aluminum: o.data.materials[0]=camouflage
         elif original==panelmetal: o.data.materials[0]=camouflage_dark
         elif original==yellow: o.data.materials[0]=black
+    intake('Bf109 chin oil cooler',0,-.43,3.46,.23,.14,.5,camouflage)
+    intake('Bf109 port supercharger',-.58,.12,2.25,.12,.12,.4,camouflage)
     # Faceted greenhouse canopy distinguishes the narrow German cockpit.
     arches=[(-1.02,.35,.85),(-.62,.40,1.39),(.65,.40,1.39),(1.06,.33,.95)]
     points=[]
@@ -50,6 +52,7 @@ def build_bf109():
     return obs
 
 def loft(name,stations,cx,material,open_cockpit=False):
+    stations=smooth_stations(stations)
     points=[]; faces=[]; n=48
     for z,w,h,cy in stations:
         for k in range(n):
@@ -66,13 +69,16 @@ def build_p38():
     global objects
     obs=airframe(False); objects=obs
     discard(obs,lambda n:not cockpit_part(n))
-    pod=[(-2.3,.04,.08,.04),(-1.8,.30,.39,.02),(-1.0,.53,.58,.02),(-.3,.61,.65,0),(.65,.62,.65,0),(1.45,.57,.6,-.01),(2.2,.46,.47,-.02),(3.0,.32,.34,-.02),(3.65,.12,.16,-.02)]
+    pod=[(-2.3,.04,.08,.04),(-1.8,.30,.39,.02),(-1.0,.53,.58,.02),(-.3,.61,.65,0),(.65,.62,.65,0),(1.45,.57,.6,-.01),(2.2,.46,.47,-.02),(3.0,.35,.37,-.02),(3.4,.29,.31,-.02),(3.68,.20,.23,-.02),(3.84,.035,.055,-.02)]
     loft('P38 central pilot and gun pod',pod,0,aluminum,True)
-    booms=[(-6.0,.05,.1,.08),(-5.5,.14,.22,.04),(-4.6,.21,.26,0),(-3.5,.27,.29,-.02),(-2.1,.37,.34,-.02),(-.7,.49,.48,-.02),(.8,.57,.61,0),(2.0,.56,.60,.02),(3.1,.49,.51,.02),(4.05,.32,.35,.02)]
+    booms=[(-6.0,.05,.1,.08),(-5.5,.14,.22,.04),(-4.6,.21,.26,0),(-3.5,.27,.29,-.02),(-2.1,.37,.34,-.02),(-.7,.49,.48,-.02),(.8,.57,.61,0),(2.0,.56,.60,.02),(3.1,.49,.51,.05),(3.75,.415,.43,.05),(4.10,.38,.38,.05)]
     for side in [-1,1]:
         cx=side*2.65
         loft('P38 engine and tail boom',booms,cx,aluminum)
-        ellipse('P38 spinner',(cx,.02,4.35),(.34,.34,.51),yellow)
+        spinner('P38 spinner',cx,.05,4.10,.76,.38,yellow)
+        profile_shell('P38J chin fairing',smooth_stations([(1.75,.22,.12,-.38),
+            (2.4,.37,.28,-.45),(3.15,.405,.32,-.45),(3.68,.39,.285,-.45)]),cx,aluminum,True,False)
+        intake('P38J chin intake',cx,-.45,3.74,.39,.285,.23,aluminum)
         box('P38 anti glare engine',(cx,.595,1.65),(.54,.025,1.9),black,.035)
         for i in range(6):
             z=1.65+i*.23

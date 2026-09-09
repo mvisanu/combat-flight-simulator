@@ -137,7 +137,7 @@ namespace PacificCombat.Editor
         public static void Validate()
         {
             GenerateAircraftAssets();
-            SelectionAcceptance.Run(); AircraftRosterAcceptance.Run(); FlightAcceptance.Run(); CombatAcceptance.Run(); FuelAcceptance.Run(); SettingsAcceptance.Run(); InputAcceptance.Run(); AIAcceptance.Run(); ArtAcceptance.Run();
+            SelectionAcceptance.Run(); AircraftRosterAcceptance.Run(); RadarAcceptance.Run(); FlightAcceptance.Run(); CombatAcceptance.Run(); FuelAcceptance.Run(); SettingsAcceptance.Run(); InputAcceptance.Run(); AIAcceptance.Run(); ArtAcceptance.Run();
             WorldAcceptance.Run();
             if (Application.isBatchMode) { AIAcceptance.RunRoster(); AIExpandedAcceptance.Run(); AdvancedFlightAcceptance.Run(); }
             Debug.Log("ALL CORE ACCEPTANCE CHECKS PASSED");

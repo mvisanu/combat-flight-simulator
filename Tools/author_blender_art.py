@@ -67,15 +67,23 @@ def ellipse(name,p,s,m):
     for face in o.data.polygons: face.use_smooth=True
     return o
 
+exec((ROOT / 'Tools/aircraft_nose_geometry.py').read_text(encoding='utf-8'), globals())
+
 def airframe(zero):
     global objects
     objects=[]; skin=green if zero else aluminum
     # Cross sections: tail to spinner. Lofted shell leaves an actual open pilot well.
     stations=[(-4.55,.06,.09,.18),(-4.1,.17,.24,.16),(-3.5,.26,.33,.13),(-2.7,.35,.43,.1),(-1.8,.43,.52,.06),(-.95,.51,.60,.03),(-.3,.58,.63,.02),(.65,.61,.66,.02),(1.45,.60,.66,.01),(2.25,.57,.65,.03),(3.25,.52,.57,.05),(3.9,.43,.47,.05),(4.23,.3,.33,.05)]
+    stations=stations[:9]+[(2.25,.57,.64,.03),(3.15,.51,.57,.05),
+        (3.75,.465,.49,.05),(4.08,.435,.445,.05),(4.23,.43,.43,.05)]
     if zero:
-        stations=[(z*.91,w*(1.4 if z>2.25 else .96),h*(1.14 if z>2.25 else .97),cy) for z,w,h,cy in stations]
+        stations=[(z*.91,w*.96,h*.97,cy) for z,w,h,cy in stations[:9]]+[
+            (1.85,.61,.67,.03),(2.35,.73,.75,.05),(2.65,.79,.79,.05),
+            (3.3,.80,.80,.05),(3.76,.79,.79,.05)]
     # Reference span/length: T.O. 1F-51D-1 general arrangement and museum A6M2 dimensions.
     z,w,h,cy=stations[0]; stations[0]=(-4.44 if zero else -4.894,w,h,cy)
+    panel_stations=list(stations)
+    stations=smooth_stations(stations)
     pts=[]; faces=[]; n=48
     for z,w,h,cy in stations:
         for k in range(n):
@@ -88,23 +96,20 @@ def airframe(zero):
             faces.append((j*n+k,j*n+(k+1)%n,(j+1)*n+(k+1)%n,(j+1)*n+k))
     mesh('Fuselage',pts,faces,skin)
     if zero:
-        nose_z,nose_w,nose_h,nose_y=stations[-1]
-        cap=[(0,nose_y,nose_z-.012)]+[(nose_w*math.cos(k*2*math.pi/48),nose_y+nose_h*math.sin(k*2*math.pi/48),nose_z-.012) for k in range(48)]
-        mesh('Recessed radial engine face',cap,[(0,k+1,(k+1)%48+1) for k in range(48)],black,False)
-        for k in range(14):
-            a=k*math.pi/7
-            ellipse('Radial cylinder head',(.29*math.cos(a),nose_y+.27*math.sin(a),nose_z+.012),(.055,.055,.028),steel)
-    ellipse('Spinner',(0,.05,4.14 if zero else 4.43),(.34,.34,.48),skin if zero else yellow)
+        radial_nose()
+    else:
+        spinner('Spinner',0,.05,4.23,.68,.43,yellow)
+        intake('Mustang chin inlet',0,-.37,3.91,.22,.095,.38,aluminum)
     # Visible ring seams and rows of flush fasteners on engine and aft fuselage.
     for j in [1,3,4,8,9,10,11]:
-        z,w,h,cy=stations[j]
+        z,w,h,cy=panel_stations[j]
         tube('Panel joint',[(w*1.003*math.cos(k*2*math.pi/n),cy+h*1.003*math.sin(k*2*math.pi/n),z) for k in range(n+1)],.003,seam if not zero else black)
     for side in [-1,1]:
-        for j in range(20):
+        for j in range(0 if zero else 20):
             z=1.55+j*.1
             ellipse('Cowling fastener',(side*.46,.37,z),(.011,.011,.011),steel)
         # Six exhaust stacks, with darker recessed openings.
-        for i in range(6):
+        for i in range(0 if zero else 6):
             z=1.85+i*.22
             tube('Exhaust stack',[(side*.49,.2,z),(side*.68,.18,z-.09)],.052,steel)
         if not zero and side == 1:

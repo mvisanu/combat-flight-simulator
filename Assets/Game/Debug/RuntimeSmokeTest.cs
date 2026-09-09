@@ -92,6 +92,8 @@ namespace PacificCombat
                 && PlayerPrefs.GetString(GameSettings.PreferenceKey, "") == savedPreferences, "Automation cannot overwrite saved user settings");
             GameSettings.Current.UnlimitedAmmo = false;
             GameSettings.ApplyToMission(mission);
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "--radar-smoke") >= 0)
+                yield return RadarRuntimeSmoke.Run(mission, Capture, Require);
             mission.Pause(); yield return new WaitForSecondsRealtime(.1f);
             Require(Time.timeScale == 0 && mission.State == MissionState.Paused, "Pause freezes simulation");
             yield return Capture("pause.png");

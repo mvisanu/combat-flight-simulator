@@ -16,12 +16,12 @@ namespace PacificCombat
         Texture2D buttonNormal, buttonHover, buttonActive;
         readonly Texture2D[] countryFlags = new Texture2D[3];
         bool settings;
-        readonly float[] radarRanges = { 2, 5, 10 };
+        readonly RadarScope radar = new RadarScope();
+        public RadarScope Radar => radar;
+        Texture2D radarGrid, radarFriend, radarFoe, radarPlayer;
+        GUIStyle radarText, radarButton;
         readonly string[] radarLabels = { "2 mi", "5 mi", "10 mi" };
         readonly string[] radarRingLabels = { "Rings: 1 / 2 mi radius", "Rings: 2.5 / 5 mi radius", "Rings: 5 / 10 mi radius" };
-        int radarRange = 1;
-        float nextRadarRead;
-        string radarReadout = "No enemies in range";
 
         float fps, nextRead;
         string flightReadout, engineReadout, weaponReadout, debugReadout;
@@ -43,6 +43,7 @@ namespace PacificCombat
         public void SetSettingsPage(int page) { settingsPanel.SetPage(page); }
         void Update()
         {
+            if (mission && mission.ShowHUD && mission.State == MissionState.Flying) radar.Refresh(mission);
             fps = Mathf.Lerp(fps, 1 / Mathf.Max(.0001f, Time.unscaledDeltaTime), .04f);
             if (!mission || !mission.Player || Time.unscaledTime < nextRead) return;
             nextRead = Time.unscaledTime + .1f;
@@ -104,9 +105,14 @@ namespace PacificCombat
             smallButton = new GUIStyle(button) { fontSize = 16, padding = new RectOffset(8, 8, 3, 3) };
             paragraph = new GUIStyle(text) { wordWrap = true };
             advice = new GUIStyle(small) { wordWrap = true };
+            radarText = new GUIStyle(text) { fontSize = 18 };
+            radarButton = new GUIStyle(smallButton) { fontSize = 18, alignment = TextAnchor.MiddleCenter };
+            radarGrid = RadarSymbols.Grid(); radarFriend = RadarSymbols.Contact(true);
+            radarFoe = RadarSymbols.Contact(false); radarPlayer = RadarSymbols.Player();
         }
         static Texture2D Swatch(Color color) { var texture = new Texture2D(1, 1); texture.SetPixel(0, 0, color); texture.Apply(); return texture; }
-        void OnDestroy() { if (buttonNormal) Destroy(buttonNormal); if (buttonHover) Destroy(buttonHover); if (buttonActive) Destroy(buttonActive); foreach(var flag in countryFlags) if(flag) Destroy(flag); }
+        void OnDestroy() { if (buttonNormal) Destroy(buttonNormal); if (buttonHover) Destroy(buttonHover); if (buttonActive) Destroy(buttonActive); foreach(var flag in countryFlags) if(flag) Destroy(flag);
+            if (radarGrid) Destroy(radarGrid); if (radarFriend) Destroy(radarFriend); if (radarFoe) Destroy(radarFoe); if (radarPlayer) Destroy(radarPlayer); }
         void Box(Rect rect, Color color) { GUI.color = color; GUI.DrawTexture(rect, pixel); GUI.color = Color.white; }
         void Line(Vector2 from, Vector2 to, Color color, float width = 2)
         {
@@ -184,59 +190,64 @@ namespace PacificCombat
         void DrawRadar()
         {
             if (mission.State != MissionState.Flying) return;
-            var phosphor = new Color(.48f, 1f, .62f);
-            var grid = new Color(.38f, .85f, .52f, .7f);
-            Box(new Rect(1300, 116, 270, 328), new Color(.02f, .06f, .04f, .28f));
-            GUI.Label(new Rect(1312, 122, 246, 30), "ENEMY SCOPE", text);
-            for (int i = 0; i < radarRanges.Length; i++)
+            Box(new Rect(1280, 116, 290, 458), new Color(.025f, .055f, .065f, .94f));
+            GUI.Label(new Rect(1298, 124, 254, 30), "AIR CONTACTS", text);
+            GUI.Label(new Rect(1474, 129, 80, 24), "HDG UP", small);
+            for (int i = 0; i < radar.Ranges.Length; i++)
             {
-                var old = GUI.backgroundColor;
-                GUI.backgroundColor = i == radarRange ? phosphor : Color.white;
-                if (GUI.Button(new Rect(1312 + i * 84, 158, 78, 30), radarLabels[i], smallButton)) { radarRange = i; nextRadarRead = 0; }
-                GUI.backgroundColor = old;
+                var rect = new Rect(1298 + i * 86, 159, 80, 32);
+                bool active = i == radar.RangeIndex;
+                if (GUI.Toggle(rect, active, radarLabels[i], radarButton) && !active) radar.SetRange(i);
+                if (active) Box(new Rect(rect.x + 8, rect.yMax - 3, rect.width - 16, 2), ivory);
             }
-            Vector2 center = new Vector2(1435, 291);
-            const float radius = 87;
-            for (int ring = 1; ring <= 2; ring++)
+            Vector2 center = new Vector2(1425, 316);
+            // 0.94 is the outer ring's normalized radius in the cached grid image.
+            const float extent = RadarScope.Radius / .94f;
+            GUI.DrawTexture(new Rect(center.x-extent, center.y-extent, extent*2, extent*2), radarGrid);
+            for (int i = 0; i < radar.Count; i++)
             {
-                float r = radius * ring / 2;
-                for (int segment = 0; segment < 64; segment++)
+                var contact = radar.Contacts[i];
+                if (!contact.Aircraft || contact.Aircraft.IsDestroyed || !contact.Aircraft.isActiveAndEnabled) continue;
+                Vector2 point = center + contact.IconPosition, anchor = center + contact.Position;
+                if ((point-anchor).sqrMagnitude > 4)
                 {
-                    float a = segment * Mathf.PI * 2 / 64, b = (segment + 1) * Mathf.PI * 2 / 64;
-                    Line(center + new Vector2(Mathf.Sin(a), Mathf.Cos(a)) * r, center + new Vector2(Mathf.Sin(b), Mathf.Cos(b)) * r, grid);
+                    Line(anchor, point, new Color(.5f,.62f,.64f,.7f), 1);
+                    Box(new Rect(anchor.x-1.5f, anchor.y-1.5f, 3, 3), ivory);
                 }
             }
-            Line(center + Vector2.left * radius, center + Vector2.right * radius, grid);
-            Line(center + Vector2.up * radius, center + Vector2.down * radius, grid);
-            GUI.Label(new Rect(1404, 185, 90, 24), "AHEAD", small);
-            Vector3 forward = Vector3.ProjectOnPlane(mission.Player.transform.forward, Vector3.up);
-            if (forward.sqrMagnitude < .001f) forward = Vector3.ProjectOnPlane(mission.Player.transform.up, Vector3.up);
-            forward.Normalize();
-            Vector3 right = Vector3.Cross(Vector3.up, forward);
-            float limit = radarRanges[radarRange] * 1609.344f, nearest = float.PositiveInfinity;
-            int count = 0;
-            foreach (var enemy in mission.Enemies)
+            // Selected symbol is painted last, keeping its brackets visible in crowds.
+            for (int i = radar.Count-1; i >= 0; i--)
             {
-                if (!enemy || enemy.IsDestroyed) continue;
-                var delta = enemy.transform.position - mission.Player.transform.position;
-                float x = Vector3.Dot(delta, right), y = Vector3.Dot(delta, forward);
-                float distance = Mathf.Sqrt(x*x + y*y);
-                if (distance > limit) continue;
-                count++; nearest = Mathf.Min(nearest, distance);
-                var point = center + new Vector2(x, -y) * (radius / limit);
-                bool selected = enemy == mission.SelectedTarget;
-                Box(new Rect(point.x - 4, point.y - 4, 8, 8), selected ? amber : phosphor);
-                if (selected) { Line(point + new Vector2(-7,-7), point + new Vector2(7,-7), amber); Line(point + new Vector2(-7,7), point + new Vector2(7,7), amber); }
+                var contact = radar.Contacts[i];
+                if (!contact.Aircraft || contact.Aircraft.IsDestroyed || !contact.Aircraft.isActiveAndEnabled) continue;
+                Vector2 point = center + contact.IconPosition;
+                RadarIcon(point, contact.Friendly ? radarFriend : radarFoe);
+                if (contact.Selected) RadarSelection(point);
             }
-            Line(center + new Vector2(-5,5), center + new Vector2(0,-5), ivory, 2);
-            Line(center + new Vector2(0,-5), center + new Vector2(5,5), ivory, 2);
-            if (Time.unscaledTime >= nextRadarRead)
+            Box(new Rect(center.x-11, center.y-11, 22, 22), RadarSymbols.Ink);
+            RadarIcon(center, radarPlayer);
+            RadarIcon(new Vector2(1307,449), radarFriend);
+            GUI.Label(new Rect(1326,437,98,26), "FRIEND", radarText);
+            RadarIcon(new Vector2(1440,449), radarFoe);
+            GUI.Label(new Rect(1459,437,94,26), "FOE", radarText);
+            RadarIcon(new Vector2(1307,478), radarPlayer);
+            GUI.Label(new Rect(1326,466,98,26), "YOU", radarText);
+            RadarIcon(new Vector2(1440,478), radarFoe); RadarSelection(new Vector2(1440,478));
+            GUI.Label(new Rect(1459,466,94,26), "TARGET", radarText);
+            GUI.Label(new Rect(1298,499,256,26), radar.Counts, radarText);
+            GUI.Label(new Rect(1298,525,256,26), radar.Nearest, radarText);
+            GUI.Label(new Rect(1298,549,256,24), radarRingLabels[radar.RangeIndex], small);
+        }
+
+        void RadarIcon(Vector2 point, Texture2D icon) => GUI.DrawTexture(new Rect(point.x-14,point.y-14,28,28),icon);
+        void RadarSelection(Vector2 point)
+        {
+            for (int x=-1;x<=1;x+=2) for (int y=-1;y<=1;y+=2)
             {
-                nextRadarRead = Time.unscaledTime + .25f;
-                radarReadout = count == 0 ? "No enemies in range" : count + " / nearest " + (nearest / 1609.344f).ToString("0.00") + " mi";
+                Vector2 corner = point + new Vector2(x*16,y*16);
+                Line(corner, corner-new Vector2(x*6,0), amber, 2);
+                Line(corner, corner-new Vector2(0,y*6), amber, 2);
             }
-            GUI.Label(new Rect(1312, 383, 246, 27), radarReadout, text);
-            GUI.Label(new Rect(1312, 413, 246, 24), radarRingLabels[radarRange], small);
         }
 
         static string ControlHelp(bool flaps, bool gear) => flaps ? (gear ? "FLAPS DOWN  GEAR DOWN  C  Camera    V  Cockpit    RMB  Look    ESC  Pause" : "FLAPS DOWN  C  Camera    V  Cockpit    RMB  Look    ESC  Pause") : (gear ? "GEAR DOWN  C  Camera    V  Cockpit    RMB  Look    ESC  Pause" : "C  Camera    V  Cockpit    RMB  Look    ESC  Pause");

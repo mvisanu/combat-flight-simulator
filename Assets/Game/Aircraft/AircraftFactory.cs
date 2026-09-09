@@ -7,7 +7,7 @@ namespace PacificCombat
     {
         static Material silver, green, olive, camouflage, dark, glass, red, white, yellow, propellerBlur;
         static readonly GameObject[] aircraftArt = new GameObject[4];
-        static Mesh ellipsoidCollider;
+        static Mesh ellipsoidCollider, propellerBlade;
         static void Materials()
         {
             if (silver) return;
@@ -85,12 +85,11 @@ namespace PacificCombat
             }
             Part("Vertical stabilizer", PrimitiveType.Sphere, visuals, new Vector3(0, .7f, -3.4f), new Vector3(.15f, 1.95f, .95f), skin, damage, DamageZoneType.VerticalStabilizer);
             animation.Rudder = ControlSurface("Rudder", visuals, new Vector3(0, .75f, -3.88f), new Vector3(0, 0, -.31f), new Vector3(.13f, 1.65f, .62f), skin, damage, DamageZoneType.Rudder);
-            var prop = new GameObject("Propeller").transform; prop.SetParent(visuals, false); prop.localPosition = new Vector3(0, .05f, messerschmitt ? 3.95f : 4.25f);
+            var prop = new GameObject("Propeller").transform; prop.SetParent(visuals, false); prop.localPosition = new Vector3(0, .05f, zero ? 4.02f : messerschmitt ? 3.995f : 4.25f);
             for (int p = 0; p < (zero || messerschmitt ? 3 : 4); p++)
             {
                 Quaternion bladeRotation = Quaternion.Euler(0, 0, p * (zero || messerschmitt ? 120 : 90));
-                var blade = Part("Propeller blade", PrimitiveType.Cube, prop, bladeRotation * new Vector3(0, .825f, 0), new Vector3(.15f, 1.65f, .045f), dark);
-                blade.localRotation = bladeRotation;
+                CreatePropellerBlade(prop, bladeRotation);
             }
             animation.Propeller = prop;
             animation.PropellerBlur = Part("High RPM propeller disk", PrimitiveType.Cylinder, visuals, prop.localPosition, new Vector3(3.3f, .002f, 3.3f), propellerBlur);
@@ -203,7 +202,7 @@ namespace PacificCombat
                 for (int blade = 0; blade < 3; blade++)
                 {
                     Quaternion rotation = Quaternion.Euler(0, 0, blade * 120);
-                    var part = Part("Propeller blade", PrimitiveType.Cube, prop, rotation * new Vector3(0, .825f, 0), new Vector3(.15f, 1.65f, .045f), dark); part.localRotation = rotation;
+                    CreatePropellerBlade(prop, rotation);
                 }
                 animation.Propellers[i] = prop;
                 var blur = Part("High RPM propeller disk", PrimitiveType.Cylinder, visuals, prop.localPosition, new Vector3(3.3f, .002f, 3.3f), propellerBlur);
@@ -220,6 +219,47 @@ namespace PacificCombat
                 var wheel = Part("Wheel", PrimitiveType.Cylinder, gear, new Vector3(0, -1.2f, 0), new Vector3(.6f, .13f, .6f), dark); wheel.localRotation = Quaternion.Euler(0, 0, 90);
                 animation.Gear[i] = gear; gear.gameObject.SetActive(false);
             }
+        }
+
+        static void CreatePropellerBlade(Transform parent, Quaternion rotation)
+        {
+            if (!propellerBlade)
+            {
+                // Rounded airfoil sections taper and twist toward the tip. Shared
+                // by the whole roster; rotation/blur still use the existing hubs.
+                float[] radius = { .18f, .35f, .65f, 1f, 1.3f, 1.52f, 1.64f, 1.67f };
+                float[] chord = { .09f, .14f, .22f, .24f, .20f, .14f, .07f, .004f };
+                const int sides = 12;
+                var vertices = new Vector3[radius.Length * sides];
+                var body = new List<int>(); var tips = new List<int>();
+                for (int j = 0; j < radius.Length; j++)
+                {
+                    float twist = Mathf.Lerp(35, 8, radius[j] / 1.67f);
+                    for (int k = 0; k < sides; k++)
+                    {
+                        float angle = k * Mathf.PI * 2 / sides;
+                        vertices[j * sides + k] = new Vector3(0, radius[j], 0) +
+                            Quaternion.Euler(0, twist, 0) * new Vector3(Mathf.Cos(angle) * chord[j] * .5f, 0, Mathf.Sin(angle) * chord[j] * .08f);
+                        if (j == radius.Length - 1) continue;
+                        int a = j * sides + k, b = j * sides + (k + 1) % sides;
+                        var indices = j >= 5 ? tips : body;
+                        indices.AddRange(new[] { a, a + sides, b + sides, a, b + sides, b });
+                    }
+                }
+                for (int k = 1; k < sides - 1; k++)
+                {
+                    body.AddRange(new[] { 0, k, k + 1 });
+                    int end = (radius.Length - 1) * sides;
+                    tips.AddRange(new[] { end, end + k + 1, end + k });
+                }
+                propellerBlade = new Mesh { name = "Tapered twisted propeller blade", vertices = vertices, subMeshCount = 2 };
+                propellerBlade.SetTriangles(body, 0); propellerBlade.SetTriangles(tips, 1);
+                propellerBlade.RecalculateNormals(); propellerBlade.RecalculateBounds();
+            }
+            var blade = new GameObject("Propeller blade"); blade.transform.SetParent(parent, false);
+            blade.transform.localRotation = rotation;
+            blade.AddComponent<MeshFilter>().sharedMesh = propellerBlade;
+            blade.AddComponent<MeshRenderer>().sharedMaterials = new[] { dark, yellow };
         }
 
         static bool IsAnimatedRenderer(Transform item, AircraftVisuals animation)

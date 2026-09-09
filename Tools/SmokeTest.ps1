@@ -5,7 +5,8 @@ param(
     [ValidateRange(800,7680)][int]$Width = 1600,
     [ValidateRange(450,4320)][int]$Height = 900,
     [ValidateSet('p51','zero','bf109','p38')][string]$Player = 'p51',
-    [ValidateSet('p51','zero','bf109','p38')][string]$Enemy = 'zero'
+    [ValidateSet('p51','zero','bf109','p38')][string]$Enemy = 'zero',
+    [switch]$Radar
 )
 $ErrorActionPreference = 'Stop'
 $Player = $Player.ToLowerInvariant()
@@ -16,6 +17,7 @@ $executablePath = Join-Path $buildPath 'PacificFighterSweep.exe'
 if (!(Test-Path -LiteralPath $executablePath)) { throw 'Build the Windows player with Tools/Build.ps1 first.' }
 $reportFolder = "SmokeTest$Enemies-$Player-$Enemy"
 $arguments = @('--smoke-test', "--enemies=$Enemies", "--smoke-duration=$Duration", "--player=$Player", "--enemy=$Enemy", "--smoke-label=$Player-$Enemy", '-screen-width', "$Width", '-screen-height', "$Height", '-logFile', "$reportFolder-player.log")
+if ($Radar) { $arguments += '--radar-smoke' }
 if ($GraphicsApi -eq 'DirectX11') { $arguments += '-force-d3d11' }
 if ($GraphicsApi -eq 'DirectX12') { $arguments += '-force-d3d12' }
 $startedAt = [DateTime]::UtcNow
